@@ -1,0 +1,31 @@
+# 构建输出
+bin/
+obj/
+publish/
+[Dd]ebug/
+[Rr]elease/
+*.user
+*.suo
+.vs/
+.idea/
+*.DotSettings.user
+
+# NuGet
+*.nupkg
+packages/
+
+# 开发过程中的临时文件（截图、探测脚本等）
+shot*.png
+motion*.png
+crop.png
+probe*.ps1
+probe_motion.ps1
+check_*.ps1
+crop.ps1
+darken.py
+darken.ps1
+icon.ps1
+
+# 系统文件
+Thumbs.db
+.DS_Store

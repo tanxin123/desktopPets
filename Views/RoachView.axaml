@@ -1,0 +1,54 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Spider.Views.RoachView"
+             IsHitTestVisible="False">
+
+    <UserControl.Styles>
+        <Style Selector="Line.rc-leg">
+            <Setter Property="StrokeLineCap" Value="Round" />
+        </Style>
+        <Style Selector="Line.rc-a"><Setter Property="StrokeThickness" Value="4.5" /><Setter Property="Stroke" Value="#3A1F10" /></Style>
+        <Style Selector="Line.rc-b"><Setter Property="StrokeThickness" Value="3.5" /><Setter Property="Stroke" Value="#2E180B" /></Style>
+        <Style Selector="Line.rc-c"><Setter Property="StrokeThickness" Value="2.5" /><Setter Property="Stroke" Value="#24120A" /></Style>
+        <Style Selector="Line.rc-d"><Setter Property="StrokeThickness" Value="1.5" /><Setter Property="Stroke" Value="#1A0D06" /></Style>
+    </UserControl.Styles>
+
+    <Canvas>
+        <!-- 6 条腿：L1~L3 左侧，R1~R3 右侧，每条 4 段 -->
+        <Canvas>
+            <Line x:Name="L1a" Classes="rc-leg rc-a" /><Line x:Name="L1b" Classes="rc-leg rc-b" /><Line x:Name="L1c" Classes="rc-leg rc-c" /><Line x:Name="L1d" Classes="rc-leg rc-d" />
+            <Line x:Name="L2a" Classes="rc-leg rc-a" /><Line x:Name="L2b" Classes="rc-leg rc-b" /><Line x:Name="L2c" Classes="rc-leg rc-c" /><Line x:Name="L2d" Classes="rc-leg rc-d" />
+            <Line x:Name="L3a" Classes="rc-leg rc-a" /><Line x:Name="L3b" Classes="rc-leg rc-b" /><Line x:Name="L3c" Classes="rc-leg rc-c" /><Line x:Name="L3d" Classes="rc-leg rc-d" />
+            <Line x:Name="R1a" Classes="rc-leg rc-a" /><Line x:Name="R1b" Classes="rc-leg rc-b" /><Line x:Name="R1c" Classes="rc-leg rc-c" /><Line x:Name="R1d" Classes="rc-leg rc-d" />
+            <Line x:Name="R2a" Classes="rc-leg rc-a" /><Line x:Name="R2b" Classes="rc-leg rc-b" /><Line x:Name="R2c" Classes="rc-leg rc-c" /><Line x:Name="R2d" Classes="rc-leg rc-d" />
+            <Line x:Name="R3a" Classes="rc-leg rc-a" /><Line x:Name="R3b" Classes="rc-leg rc-b" /><Line x:Name="R3c" Classes="rc-leg rc-c" /><Line x:Name="R3d" Classes="rc-leg rc-d" />
+        </Canvas>
+
+        <!-- 身体：原点 = 前胸背板与翅鞘连接处，头朝 -Y -->
+        <Canvas x:Name="BodyRoot" Width="0" Height="0">
+            <!-- 触角 -->
+            <Path Stroke="#1A0D06" StrokeThickness="1.6" StrokeLineCap="Round"
+                  Data="M -3,-50 Q -14,-88 -46,-128 M 3,-50 Q 14,-88 46,-128" />
+            <!-- 尾须 -->
+            <Path Stroke="#1A0D06" StrokeThickness="2" StrokeLineCap="Round" Data="M -5,100 L -8,112 M 5,100 L 8,112" />
+            <!-- 头（大部分被前胸背板盖住） -->
+            <Ellipse Canvas.Left="-6" Canvas.Top="-54" Width="12" Height="14" Fill="#24120A" />
+            <!-- 翅鞘 -->
+            <Path StrokeThickness="1.3" Stroke="#0D0603"
+                  Data="M 0,-10 C 26,-2 27,52 15,94 Q 0,108 -15,94 C -27,52 -26,-2 0,-10 Z">
+                <Path.Fill>
+                    <LinearGradientBrush StartPoint="0%,0%" EndPoint="0%,100%">
+                        <GradientStop Color="#2A130B" Offset="0" />
+                        <GradientStop Color="#3B1D10" Offset="0.55" />
+                        <GradientStop Color="#7A4A22" Offset="1" />
+                    </LinearGradientBrush>
+                </Path.Fill>
+            </Path>
+            <Path Stroke="#120804" StrokeThickness="1.2" Data="M 0,-6 L 0,104" />
+            <Ellipse Canvas.Left="-17" Canvas.Top="8" Width="11" Height="60" Fill="#8A5A34" Opacity="0.22" />
+            <!-- 前胸背板 -->
+            <Ellipse Canvas.Left="-20" Canvas.Top="-44" Width="40" Height="42" StrokeThickness="2" Stroke="#5A3018" Fill="#2B160C" />
+            <Ellipse Canvas.Left="-11" Canvas.Top="-36" Width="22" Height="26" Fill="#1A0D06" Opacity="0.8" />
+        </Canvas>
+    </Canvas>
+</UserControl>

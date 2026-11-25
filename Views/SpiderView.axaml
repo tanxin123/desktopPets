@@ -1,0 +1,84 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Spider.Views.SpiderView"
+             IsHitTestVisible="False">
+
+    <UserControl.Styles>
+        <Style Selector="Line.sp-leg">
+            <Setter Property="StrokeLineCap" Value="Round" />
+        </Style>
+        <Style Selector="Line.sp-a"><Setter Property="StrokeThickness" Value="10" /><Setter Property="Stroke" Value="#292015" /></Style>
+        <Style Selector="Line.sp-b"><Setter Property="StrokeThickness" Value="8" /><Setter Property="Stroke" Value="#251D12" /></Style>
+        <Style Selector="Line.sp-c"><Setter Property="StrokeThickness" Value="5.5" /><Setter Property="Stroke" Value="#1F170E" /></Style>
+        <Style Selector="Line.sp-d"><Setter Property="StrokeThickness" Value="3" /><Setter Property="Stroke" Value="#100A06" /></Style>
+    </UserControl.Styles>
+
+    <Canvas>
+        <!-- 8 条腿：L1~L4 左侧，R1~R4 右侧，每条 4 段（a 基节 / b 股节 / c 胫节 / d 跗节） -->
+        <Canvas>
+            <Line x:Name="L1a" Classes="sp-leg sp-a" /><Line x:Name="L1b" Classes="sp-leg sp-b" /><Line x:Name="L1c" Classes="sp-leg sp-c" /><Line x:Name="L1d" Classes="sp-leg sp-d" />
+            <Line x:Name="L2a" Classes="sp-leg sp-a" /><Line x:Name="L2b" Classes="sp-leg sp-b" /><Line x:Name="L2c" Classes="sp-leg sp-c" /><Line x:Name="L2d" Classes="sp-leg sp-d" />
+            <Line x:Name="L3a" Classes="sp-leg sp-a" /><Line x:Name="L3b" Classes="sp-leg sp-b" /><Line x:Name="L3c" Classes="sp-leg sp-c" /><Line x:Name="L3d" Classes="sp-leg sp-d" />
+            <Line x:Name="L4a" Classes="sp-leg sp-a" /><Line x:Name="L4b" Classes="sp-leg sp-b" /><Line x:Name="L4c" Classes="sp-leg sp-c" /><Line x:Name="L4d" Classes="sp-leg sp-d" />
+            <Line x:Name="R1a" Classes="sp-leg sp-a" /><Line x:Name="R1b" Classes="sp-leg sp-b" /><Line x:Name="R1c" Classes="sp-leg sp-c" /><Line x:Name="R1d" Classes="sp-leg sp-d" />
+            <Line x:Name="R2a" Classes="sp-leg sp-a" /><Line x:Name="R2b" Classes="sp-leg sp-b" /><Line x:Name="R2c" Classes="sp-leg sp-c" /><Line x:Name="R2d" Classes="sp-leg sp-d" />
+            <Line x:Name="R3a" Classes="sp-leg sp-a" /><Line x:Name="R3b" Classes="sp-leg sp-b" /><Line x:Name="R3c" Classes="sp-leg sp-c" /><Line x:Name="R3d" Classes="sp-leg sp-d" />
+            <Line x:Name="R4a" Classes="sp-leg sp-a" /><Line x:Name="R4b" Classes="sp-leg sp-b" /><Line x:Name="R4c" Classes="sp-leg sp-c" /><Line x:Name="R4d" Classes="sp-leg sp-d" />
+        </Canvas>
+
+        <!-- 身体：原点 = 头胸部与腹部连接处，头朝 -Y -->
+        <Canvas x:Name="BodyRoot" Width="0" Height="0">
+            <!-- 腹部 -->
+            <Ellipse Canvas.Left="-26" Canvas.Top="4" Width="52" Height="80" StrokeThickness="1.2" Stroke="#0D0804">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="50%,35%" GradientOrigin="45%,30%" RadiusX="80%" RadiusY="80%">
+                        <GradientStop Color="#292115" Offset="0" />
+                        <GradientStop Color="#1E170E" Offset="0.65" />
+                        <GradientStop Color="#110C07" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+            <Path Fill="#322E26" Opacity="0.6" Data="M 0,10 L 7,28 L 5,58 L 0,76 L -5,58 L -7,28 Z" />
+            <Ellipse Canvas.Left="-17" Canvas.Top="26" Width="8" Height="12" Fill="#100B07" Opacity="0.8" />
+            <Ellipse Canvas.Left="9" Canvas.Top="26" Width="8" Height="12" Fill="#100B07" Opacity="0.8" />
+            <Ellipse Canvas.Left="-15" Canvas.Top="46" Width="7" Height="10" Fill="#100B07" Opacity="0.7" />
+            <Ellipse Canvas.Left="8" Canvas.Top="46" Width="7" Height="10" Fill="#100B07" Opacity="0.7" />
+            <Ellipse Canvas.Left="-11" Canvas.Top="62" Width="6" Height="8" Fill="#100B07" Opacity="0.6" />
+            <Ellipse Canvas.Left="5" Canvas.Top="62" Width="6" Height="8" Fill="#100B07" Opacity="0.6" />
+
+            <!-- 腹柄 -->
+            <Ellipse Canvas.Left="-8" Canvas.Top="-5" Width="16" Height="12" Fill="#140E09" />
+
+            <!-- 头胸部 -->
+            <Ellipse Canvas.Left="-28" Canvas.Top="-60" Width="56" Height="68" StrokeThickness="2.5" Stroke="#0D0804">
+                <Ellipse.Fill>
+                    <RadialGradientBrush Center="50%,45%" GradientOrigin="45%,40%" RadiusX="65%" RadiusY="65%">
+                        <GradientStop Color="#2B2317" Offset="0" />
+                        <GradientStop Color="#22190E" Offset="0.7" />
+                        <GradientStop Color="#150E08" Offset="1" />
+                    </RadialGradientBrush>
+                </Ellipse.Fill>
+            </Ellipse>
+            <Path Stroke="#140E08" StrokeThickness="1.5" StrokeLineCap="Round" Opacity="0.8"
+                  Data="M 0,-6 L 0,4 M -4,-14 L -20,-8 M 4,-14 L 20,-8 M -4,-22 L -22,-22 M 4,-22 L 22,-22" />
+            <!-- 额带 -->
+            <Path Fill="#363431" Data="M -17,-50 Q 0,-66 17,-50 L 15,-44 Q 0,-57 -15,-44 Z" />
+
+            <!-- 螯肢与须肢 -->
+            <Ellipse Canvas.Left="-13" Canvas.Top="-70" Width="11" Height="17" Fill="#180D08" />
+            <Ellipse Canvas.Left="2" Canvas.Top="-70" Width="11" Height="17" Fill="#180D08" />
+            <Ellipse Canvas.Left="-30" Canvas.Top="-64" Width="8" Height="22" Fill="#1F170E" />
+            <Ellipse Canvas.Left="22" Canvas.Top="-64" Width="8" Height="22" Fill="#1F170E" />
+
+            <!-- 8 只眼 -->
+            <Ellipse Canvas.Left="-14" Canvas.Top="-42" Width="5" Height="5" Fill="#040201" />
+            <Ellipse Canvas.Left="-7" Canvas.Top="-43" Width="6" Height="6" Fill="#040201" />
+            <Ellipse Canvas.Left="1" Canvas.Top="-43" Width="6" Height="6" Fill="#040201" />
+            <Ellipse Canvas.Left="9" Canvas.Top="-42" Width="5" Height="5" Fill="#040201" />
+            <Ellipse Canvas.Left="-19" Canvas.Top="-34" Width="5" Height="5" Fill="#040201" />
+            <Ellipse Canvas.Left="-10" Canvas.Top="-33" Width="5" Height="5" Fill="#040201" />
+            <Ellipse Canvas.Left="5" Canvas.Top="-33" Width="5" Height="5" Fill="#040201" />
+            <Ellipse Canvas.Left="14" Canvas.Top="-34" Width="5" Height="5" Fill="#040201" />
+        </Canvas>
+    </Canvas>
+</UserControl>

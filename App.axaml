@@ -1,0 +1,25 @@
+<Application xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Spider.App"
+             RequestedThemeVariant="Default">
+             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
+
+    <Application.Styles>
+        <FluentTheme />
+    </Application.Styles>
+
+    <TrayIcon.Icons>
+        <TrayIcons>
+            <TrayIcon Icon="/Assets/spider.png" ToolTipText="桌面宠物">
+                <TrayIcon.Menu>
+                    <NativeMenu>
+                        <NativeMenuItem Header="蜘蛛" Click="OnPickSpider" />
+                        <NativeMenuItem Header="蟑螂" Click="OnPickRoach" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="退出" Click="OnExitClick" />
+                    </NativeMenu>
+                </TrayIcon.Menu>
+            </TrayIcon>
+        </TrayIcons>
+    </TrayIcon.Icons>
+</Application>

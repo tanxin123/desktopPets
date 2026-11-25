@@ -1,0 +1,22 @@
+<Window xmlns="https://github.com/avaloniaui"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:v="using:Spider.Views"
+        x:Class="Spider.MainWindow"
+        Title="桌面宠物"
+        WindowState="Normal"
+        CanResize="False"
+        WindowStartupLocation="Manual"
+        SystemDecorations="None"
+        TransparencyLevelHint="Transparent"
+        Topmost="True"
+        ShowInTaskbar="False"
+        Background="Transparent"
+        Cursor="Arrow">
+
+    <!-- 舞台：宠物的腿画在世界坐标里，两个宠物视图都放在这里，同一时间只显示一个 -->
+    <Canvas x:Name="Stage" Background="Transparent">
+        <v:SpiderView x:Name="SpiderPet" ClipToBounds="False" />
+        <v:RoachView x:Name="RoachPet" ClipToBounds="False" IsVisible="False" />
+
+    </Canvas>
+</Window>
