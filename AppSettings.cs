@@ -9,6 +9,8 @@ public sealed class AppSettings
 {
     public string Pet { get; set; } = "spider";      // "spider" 或 "roach"
     public bool FeedingEnabled { get; set; } = true;
+    public bool AutoStart { get; set; } = false;           // 开机自启（计划任务）
+    public bool FollowMouse { get; set; } = false;         // 跟随鼠标
     public bool AutoHideFullscreen { get; set; } = true;   // 前台有全屏应用时自动隐藏并暂停
 
     static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DesktopPet");

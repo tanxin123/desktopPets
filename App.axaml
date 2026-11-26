@@ -21,6 +21,8 @@
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="启用喂食" ToggleType="CheckBox" Click="OnToggleFeeding" />
                         <NativeMenuItem Header="全屏时自动隐藏" ToggleType="CheckBox" Click="OnToggleAutoHide" />
+                        <NativeMenuItem Header="跟随鼠标" ToggleType="CheckBox" Click="OnToggleFollow" />
+                        <NativeMenuItem Header="开机自启" ToggleType="CheckBox" Click="OnToggleAutoStart" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="退出" Click="OnExitClick" />
                     </NativeMenu>

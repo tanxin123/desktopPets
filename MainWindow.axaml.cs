@@ -15,6 +15,7 @@ public partial class MainWindow : Window
     const double StepTime = 0.07, BaseSpeed = 420, TurnRate = 3.6;
     const double DashSpeed = 1500, DashTurn = 16, DashStepTime = 0.04;
     const double ChaseSpeed = 900, ChaseTurn = 10;
+    const double EatTime = 1.3, FollowNear = 180, FollowFar = 280;   // 吃东西时长（秒）；跟随鼠标时停下 / 出发的距离
     const double CrawlSpeed = 180, LookTurn = 1.8;      // 沿边爬行速度、原地转向速度
     const double IdleMin = 2.5, IdleMax = 6.0;          // 两次空闲小动作之间的间隔（秒）
 
@@ -37,6 +38,8 @@ public partial class MainWindow : Window
         public RotateTransform AntRotL = new(), AntRotR = new();
         public Vector[] Out = null!, Rest = null!;
         public Canvas[]? Segs;                        // 分节宠物（蜈蚣）的体节，null 表示刚性身体
+        public string Food = "fly";                   // 食物种类：fly / crumb / leaf / sugar / worm
+        public double FoodScale = 1;                  // 食物显示缩放
         public double SegGap;                         // 相邻体节中心距    // 每侧每条腿的朝向与落点（右侧镜像）
     }
 
@@ -54,7 +57,11 @@ public partial class MainWindow : Window
         public double T;
     }
 
-    sealed class Fly { public Canvas C = null!; public Vector P; }
+    sealed class Fly   // 类名沿用 Fly，实际按宠物不同是各种食物
+    {
+        public Canvas C = null!; public Vector P;               // 食物图形与位置
+        public ScaleTransform Sc = null!; public double Base;   // 吃的时候逐渐缩小
+    }
 
     readonly Pet _spider, _roach, _beetle, _ant, _centipede;
     readonly Dictionary<string, Pet> _pets = new();
@@ -73,6 +80,10 @@ public partial class MainWindow : Window
     bool _crawl, _look;
     double _lookTarget, _waveT, _twitchT, _phase, _antPhase, _idleWait = 3, _antAmp = 3;
     int _wp;
+    Fly? _eat;                       // 正在吃的食物
+    double _eatT, _nod;              // 吃东西剩余时间；头部点动角度（弧度，只影响显示）
+    bool _follow, _following;        // 跟随鼠标是否生效 / 是否正在靠近光标
+    double _ox, _oy, _sc = 1;        // 本窗口原点（屏幕像素）与缩放，用来换算其他窗口的矩形
     Vector[] _chain = new Vector[0], _segPos = new Vector[0];   // 分节宠物：沿头部轨迹跟随的链、各体节中心
     double[] _segHead = new double[0];                          // 各体节朝向
 
@@ -85,7 +96,7 @@ public partial class MainWindow : Window
             View = SpiderPet, Body = SpiderPet.BodyCanvas, Legs = SpiderPet.Legs,
             AntL = SpiderPet.AntennaL, AntR = SpiderPet.AntennaR,
             LenA = 14, LenB = 70, LenC = 84, LenD = 30, Reach = 210, Scale = 0.68, Lead = 1.0,
-            HipX = 14,
+            HipX = 14, FoodScale = 0.5,
             HipY = new double[] { -30, -20, -10, 0 },
             Out = new Vector[] { new(0.7, -0.7), new(1, -0.2), new(1, 0.2), new(0.7, 0.7) },
             Rest = new Vector[] { new(125, -135), new(165, -60), new(165, 40), new(135, 120) },
@@ -95,7 +106,7 @@ public partial class MainWindow : Window
             View = RoachPet, Body = RoachPet.BodyCanvas, Legs = RoachPet.Legs,
             AntL = RoachPet.AntennaL, AntR = RoachPet.AntennaR,
             LenA = 6, LenB = 25, LenC = 31, LenD = 10, Reach = 74, Scale = 0.7, Lead = 0.4,
-            HipX = 10,
+            HipX = 10, Food = "crumb",
             LegScale = new double[] { 0.6, 1, 1 },   // 前、中、后三对腿；前腿缩到 60%
             HipY = new double[] { -22, 4, 30 },
             Out = new Vector[] { new(0.7, -0.7), new(1, 0), new(0.7, 0.7) },
@@ -106,7 +117,7 @@ public partial class MainWindow : Window
             View = BeetlePet, Body = BeetlePet.BodyCanvas, Legs = BeetlePet.Legs,
             AntL = BeetlePet.AntennaL, AntR = BeetlePet.AntennaR,
             LenA = 6, LenB = 22, LenC = 26, LenD = 10, Reach = 62, Scale = 1, Lead = 0.5, StepScale = 0.6,
-            HipX = 16,
+            HipX = 16, Food = "leaf",
             HipY = new double[] { -18, 8, 34 },
             Out = new Vector[] { new(0.7, -0.7), new(1, 0), new(0.7, 0.7) },
             Rest = new Vector[] { new(44, -38), new(56, 8), new(44, 58) },
@@ -116,7 +127,7 @@ public partial class MainWindow : Window
             View = AntPet, Body = AntPet.BodyCanvas, Legs = AntPet.Legs,
             AntL = AntPet.AntennaL, AntR = AntPet.AntennaR,
             LenA = 3, LenB = 17, LenC = 20, LenD = 7, Reach = 48, Scale = 0.7, Lead = 0.5, StepScale = 0.45,   // 整体按 70% 缩小
-            HipX = 4,
+            HipX = 4, Food = "sugar",
             HipY = new double[] { -11, -6, 1 },
             Out = new Vector[] { new(0.7, -0.7), new(1, 0), new(0.7, 0.7) },
             Rest = new Vector[] { new(24, -28), new(31, -4), new(24, 24) },
@@ -143,7 +154,7 @@ public partial class MainWindow : Window
             AntL = CentipedePet.AntennaL, AntR = CentipedePet.AntennaR,
             LenA = 4, LenB = 16, LenC = 18, LenD = 8, Reach = 48, Scale = 1, Lead = 0.3, StepScale = 0.5,
             HipX = 12, LegScale = cScale, HipY = cHipY, Out = cOut, Rest = cRest,
-            Segs = CentipedePet.Segments, SegGap = 13,
+            Segs = CentipedePet.Segments, SegGap = 13, Food = "worm",
         };
         _pets["spider"] = _spider;
         _pets["roach"] = _roach;
@@ -184,6 +195,7 @@ public partial class MainWindow : Window
     {
         if (!_pets.TryGetValue(name, out var p)) { name = "spider"; p = _spider; }   // 未知名字回退蜘蛛
         _pet = p;
+        if (_flies.Count > 0 || _eat != null) ClearFood();   // 食物种类随宠物变化，切换时清掉场上的食物
         foreach (var kv in _pets) kv.Value.View.IsVisible = kv.Key == name;
         BuildLegs();
     }
@@ -199,7 +211,7 @@ public partial class MainWindow : Window
     // 每帧调用：触角/须肢始终轻微摆动；宠物完全静止时，隔几秒随机做一个小动作
     void UpdateIdle(double dt)
     {
-        bool still = !_walking && !_dash && !_chase;
+        bool still = !_walking && !_dash && !_chase && _eat == null;
 
         // 触角（蟑螂）/ 须肢（蜘蛛）：平时慢摆，抖动时幅度和频率都变大
         if (_twitchT > 0) _twitchT -= dt;
@@ -235,13 +247,13 @@ public partial class MainWindow : Window
         }
 
         // 到点随机挑一个动作
-        if (still && !_look && _waveT <= 0 && _twitchT <= 0)
+        if (still && !_follow && !_look && _waveT <= 0 && _twitchT <= 0)
         {
             _idleWait -= dt;
             if (_idleWait <= 0)
             {
                 _idleWait = IdleMin + _rnd.NextDouble() * (IdleMax - IdleMin);
-                switch (_rnd.Next(4))
+                switch (_rnd.Next(6))
                 {
                     case 0:
                         _look = true;
@@ -249,6 +261,8 @@ public partial class MainWindow : Window
                         break;
                     case 1: _waveT = 0.9 + _rnd.NextDouble() * 0.6; break;
                     case 2: _twitchT = 0.6 + _rnd.NextDouble() * 0.5; break;
+                    case 3:
+                    case 4: if (!StartWindowCrawl()) StartEdgeCrawl(); break;   // 沿别的窗口的边缘爬；没有合适窗口就退回屏幕边缘
                     default: StartEdgeCrawl(); break;
                 }
             }
@@ -363,12 +377,10 @@ public partial class MainWindow : Window
     public void SetFeeding(bool on)
     {
         FeedingEnabled = on;
-        if (on || _flies.Count == 0) return;
+        if (on || (_flies.Count == 0 && _eat == null)) return;
         // 关闭喂食：清掉场上的苍蝇。追击中 _walking 可能是被追击强行置位的，
         // 路线下标可能已越界，所以必须重新生成路线，避免 Tick 里访问 _route[_wp] 越界
-        foreach (var f in _flies) Stage.Children.Remove(f.C);
-        _flies.Clear();
-        StartRoute();
+        ClearFood();
     }
 
     void BuildLegs()
@@ -421,6 +433,7 @@ public partial class MainWindow : Window
             x1 = Math.Max(x1, s.Bounds.Right); y1 = Math.Max(y1, s.Bounds.Bottom);
         }
         double scale = RenderScaling;
+        _ox = x0; _oy = y0; _sc = scale;
         Position = new PixelPoint(x0, y0);
         _w = (x1 - x0) / scale;
         _h = (y1 - y0) / scale;
@@ -461,6 +474,24 @@ public partial class MainWindow : Window
     {
         if (!FeedingEnabled) return;    // 喂食被禁用
         if (_flies.Count > 0) return;   // 屏幕上同时只允许一只苍蝇
+        var c = _pet.Food switch
+        {
+            "crumb" => MakeCrumb(),
+            "leaf" => MakeLeaf(),
+            "sugar" => MakeSugar(),
+            "worm" => MakeWorm(),
+            _ => MakeFlyShape(),
+        };
+        var sc = new ScaleTransform(_pet.FoodScale, _pet.FoodScale);
+        c.RenderTransform = new TransformGroup { Children = { sc, new RotateTransform(_rnd.NextDouble() * 360) } };
+        Canvas.SetLeft(c, p.X); Canvas.SetTop(c, p.Y);
+        Stage.Children.Add(c);
+        _flies.Add(new Fly { C = c, P = p, Sc = sc, Base = _pet.FoodScale });
+    }
+
+    // 苍蝇：纯黑剪影
+    static Canvas MakeFlyShape()
+    {
         var c = new Canvas { Width = 0, Height = 0 };
         void E(double x, double y, double w, double h, double rot = 0)
         {
@@ -479,10 +510,198 @@ public partial class MainWindow : Window
             StrokeThickness = 1,
             Data = Geometry.Parse("M -4,-2 L -11,-6 M 4,-2 L 11,-6 M -4,2 L -11,4 M 4,2 L 11,4 M -4,5 L -10,11 M 4,5 L 10,11")
         });
-        c.RenderTransform = new TransformGroup { Children = { new ScaleTransform(0.5, 0.5), new RotateTransform(_rnd.NextDouble() * 360) } };
-        Canvas.SetLeft(c, p.X); Canvas.SetTop(c, p.Y);
-        Stage.Children.Add(c);
-        _flies.Add(new Fly { C = c, P = p });
+        return c;
+    }
+
+    // 其他食物的外形：单位是像素，原点在中心，宠物各自的 FoodScale 再整体缩放
+    static Avalonia.Controls.Shapes.Path Sh(string data, string? fill, string? stroke = null, double th = 1) => new()
+    {
+        Data = Geometry.Parse(data),
+        Fill = fill == null ? null : new SolidColorBrush(Color.Parse(fill)),
+        Stroke = stroke == null ? null : new SolidColorBrush(Color.Parse(stroke)),
+        StrokeThickness = th,
+        StrokeLineCap = PenLineCap.Round,
+        StrokeJoin = PenLineJoin.Round,
+    };
+
+    // 面包屑（蟑螂）
+    static Canvas MakeCrumb()
+    {
+        var c = new Canvas { Width = 0, Height = 0 };
+        c.Children.Add(Sh("M -7,-3 L -2,-8 L 6,-5 L 8,2 L 2,7 L -6,5 Z", "#D9B26F", "#8A6A30"));
+        c.Children.Add(Sh("M 10,-9 L 14,-8 L 13,-4 L 9,-5 Z", "#D9B26F", "#8A6A30"));
+        c.Children.Add(Sh("M -12,6 L -9,5 L -8,8 L -11,9 Z", "#D9B26F", "#8A6A30"));
+        return c;
+    }
+
+    // 树叶（甲虫）
+    static Canvas MakeLeaf()
+    {
+        var c = new Canvas { Width = 0, Height = 0 };
+        c.Children.Add(Sh("M 0,-14 C 12,-6 12,8 0,16 C -12,8 -12,-6 0,-14 Z", "#4E8A3A", "#2A5A1E"));
+        c.Children.Add(Sh("M 0,-11 L 0,15 M 0,-2 L 6,-7 M 0,4 L -6,-1 M 0,9 L 5,4", null, "#2A5A1E", 0.9));
+        return c;
+    }
+
+    // 糖粒（蚂蚁）
+    static Canvas MakeSugar()
+    {
+        var c = new Canvas { Width = 0, Height = 0 };
+        c.Children.Add(Sh("M -5,-5 L 3,-5 L 3,3 L -5,3 Z", "#F4F4F0", "#A8A8A0"));
+        c.Children.Add(Sh("M 5,1 L 10,1 L 10,6 L 5,6 Z", "#F4F4F0", "#A8A8A0"));
+        c.Children.Add(Sh("M -9,4 L -5,4 L -5,8 L -9,8 Z", "#F4F4F0", "#A8A8A0"));
+        return c;
+    }
+
+    // 小虫（蜈蚣）
+    static Canvas MakeWorm()
+    {
+        var c = new Canvas { Width = 0, Height = 0 };
+        c.Children.Add(Sh("M -13,0 C -9,-6 -5,6 0,0 S 9,-6 13,0", null, "#C4837A", 4));
+        c.Children.Add(Sh("M 12,-1 L 14,0 L 12,1 Z", "#7A3A32", "#7A3A32", 1));
+        return c;
+    }
+
+    // ───────── 食物：清除 / 吃东西 ─────────
+    void ClearFood()
+    {
+        foreach (var f in _flies) Stage.Children.Remove(f.C);
+        _flies.Clear();
+        _eat = null; _nod = 0;
+        StartRoute();   // 追击中 _walking 可能是被追击强行置位的，路线下标可能越界，所以重新生成路线
+    }
+
+    // 到达食物：先停下，吃完才让它消失
+    void BeginEat(Fly f)
+    {
+        _eat = f; _eatT = EatTime; _phase = 0;
+        StopPose();
+    }
+
+    // 被打断（比如点了宠物冲刺）：食物保留并恢复原大小，之后继续去吃
+    void CancelEat()
+    {
+        if (_eat == null) return;
+        _eat.Sc.ScaleX = _eat.Sc.ScaleY = _eat.Base;
+        _eat = null; _nod = 0;
+        foreach (var l in _legs) l.Held = false;
+    }
+
+    // 吃东西动画：前腿抬起抱住食物，头一点一点，食物一点点变小，吃完消失
+    void UpdateEating(double dt)
+    {
+        var f = _eat!;
+        _eatT -= dt;
+        _phase += dt * 20;
+        _nod = Math.Sin(_phase * 0.55) * 0.12;
+        double k = Math.Max(0, 1 - _eatT / EatTime);   // 0 → 1
+        f.Sc.ScaleX = f.Sc.ScaleY = f.Base * (1 - 0.9 * k);
+        RaiseLeg(0, dt);
+        RaiseLeg(_pet.HipY.Length, dt);
+        if (_eatT > 0) return;
+        _nod = 0;
+        Stage.Children.Remove(f.C); _flies.Remove(f);
+        _eat = null;
+        foreach (var l in _legs) l.Held = false;
+        if (_flies.Count == 0) { StartRoute(); _pause = 0.6; }
+    }
+
+    // ───────── 跟随鼠标（托盘菜单调用）─────────
+    public bool FollowMouse { get; private set; }
+
+    public void SetFollow(bool on)
+    {
+        if (FollowMouse == on) return;
+        FollowMouse = on;
+        _following = false; _crawl = false;
+        if (on) StopPose();
+        else if (_eat == null && _flies.Count == 0) StartRoute();   // 关闭后恢复随机走动
+    }
+
+    bool TryCursor(out Vector v)
+    {
+        v = default;
+        if (!GetCursorPos(out var c)) return false;
+        var pt = this.PointToClient(new PixelPoint(c.X, c.Y));
+        v = new Vector(pt.X, pt.Y);
+        return true;
+    }
+
+    // 离光标超过 FollowFar 就走过去，靠近到 FollowNear 以内停下（两个阈值留出滞回，避免在边界抖动）
+    double UpdateFollow(double dt)
+    {
+        if (!TryCursor(out var cur)) return 0;
+        var d = cur - _pos;
+        double dist = Len(d);
+        if (dist > FollowFar) _following = true;
+        else if (dist < FollowNear) _following = false;
+        _walking = _following;
+        _crawl = false;
+        if (!_following) return 0;
+        double diff = Wrap(Math.Atan2(d.X, -d.Y) - _heading);
+        double turn = TurnRate * dt;
+        _heading += Math.Clamp(diff, -turn, turn);
+        double speed = BaseSpeed * Math.Clamp(1 - Math.Abs(diff) / 1.3, 0.15, 1.0) * Math.Clamp(dist / 500, 0.5, 1.5);
+        _pos += Fwd(_heading) * (speed * dt);
+        return speed;
+    }
+
+    // ───────── 攀爬窗口边缘 ─────────
+    delegate bool EnumProc(IntPtr h, IntPtr lp);
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumProc cb, IntPtr lp);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out NativeRect r, int size);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr h, int attr, out int v, int size);
+
+    // 把一个顶层窗口的可见边框换算成本窗口坐标；桌面、任务栏、隐藏 / 最小化 / 太小的窗口返回 false
+    bool TryWindowRect(IntPtr h, out Rect rect)
+    {
+        rect = default;
+        if (!IsWindowVisible(h) || IsIconic(h)) return false;
+        GetWindowThreadProcessId(h, out uint pid);
+        if (pid == (uint)Environment.ProcessId) return false;   // 宠物自己的窗口
+        if (DwmGetWindowAttribute(h, 14, out int cloaked, 4) == 0 && cloaked != 0) return false;   // 14 = DWMWA_CLOAKED（UWP 后台窗口）
+        long ex = GetWindowLongPtr(h, -20).ToInt64();
+        if ((ex & 0x80) != 0 && (ex & 0x40000) == 0) return false;   // 工具窗口
+        var sb = new System.Text.StringBuilder(64);
+        GetClassName(h, sb, sb.Capacity);
+        if (sb.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd") return false;
+        NativeRect r;
+        // 9 = DWMWA_EXTENDED_FRAME_BOUNDS：不含 Win10 窗口四周看不见的阴影边框；取不到再退回 GetWindowRect
+        if (DwmGetWindowAttribute(h, 9, out r, Marshal.SizeOf<NativeRect>()) != 0 && !GetWindowRect(h, out r)) return false;
+        double x0 = (r.L - _ox) / _sc, y0 = (r.T - _oy) / _sc, x1 = (r.R - _ox) / _sc, y1 = (r.B - _oy) / _sc;
+        rect = new Rect(x0, y0, x1 - x0, y1 - y0);
+        return rect.Width >= 220 && rect.Height >= 140;
+    }
+
+    // 随机挑一个可见窗口的一条边，先走到边上，再以较慢的速度沿边爬一段。没有合适的窗口返回 false
+    bool StartWindowCrawl()
+    {
+        var wins = new List<Rect>();
+        EnumWindows((hwnd, _) => { try { if (TryWindowRect(hwnd, out var wr)) wins.Add(wr); } catch { } return true; }, IntPtr.Zero);
+        if (wins.Count == 0) return false;
+
+        const double m = 30;
+        double w = Math.Max(_w, 800), hh = Math.Max(_h, 600);
+        for (int tries = 0; tries < 8; tries++)
+        {
+            var r = wins[_rnd.Next(wins.Count)];
+            int edge = _rnd.Next(4);   // 0 上 1 右 2 下 3 左
+            bool horiz = edge is 0 or 2;
+            double fix = edge switch { 0 => r.Top, 1 => r.Right, 2 => r.Bottom, _ => r.Left };
+            double lo = Math.Max((horiz ? r.Left : r.Top) + 20, m);
+            double hi = Math.Min((horiz ? r.Right : r.Bottom) - 20, (horiz ? w : hh) - m);
+            if (fix < m || fix > (horiz ? hh : w) - m || hi - lo < 120) continue;   // 边在屏幕外或太短
+            double len = Math.Min(hi - lo, 250 + _rnd.NextDouble() * 450);
+            double s = lo + _rnd.NextDouble() * (hi - lo - len), e = s + len;
+            if (_rnd.NextDouble() < 0.5) (s, e) = (e, s);
+            Vector P(double t) => horiz ? new Vector(t, fix) : new Vector(fix, t);
+            _route.Clear();
+            _route.Add(P(s)); _route.Add(P(e));
+            StopPose();
+            _wp = 0; _pause = 0; _walking = true; _crawl = true;
+            return true;
+        }
+        return false;
     }
 
     Fly? NearestFly()
@@ -501,6 +720,7 @@ public partial class MainWindow : Window
         _dashTarget = new Vector(
             Math.Clamp(_pos.X + Math.Sin(ang) * dist, 80, w - 80),
             Math.Clamp(_pos.Y - Math.Cos(ang) * dist, 80, h - 80));
+        CancelEat();
         _dash = true; _walking = true; _pause = 0;
         _crawl = false; StopPose();
     }
@@ -525,10 +745,13 @@ public partial class MainWindow : Window
         if (CheckHidden(now)) return;   // 有全屏应用时整个暂停：不移动、不响应点击
         double speed = 0;
 
-        _chase = !_dash && _flies.Count > 0;
+        _chase = !_dash && _eat == null && _flies.Count > 0;
+        _follow = FollowMouse && !_dash && _eat == null && _flies.Count == 0;
         if (_chase) { _walking = true; _pause = 0; }
 
-        if (_walking)
+        if (_eat != null) UpdateEating(dt);
+        else if (_follow) speed = UpdateFollow(dt);
+        else if (_walking)
         {
             if (_pause > 0) _pause -= dt;
             else
@@ -539,8 +762,7 @@ public partial class MainWindow : Window
                 {
                     if (fly != null)
                     {
-                        Stage.Children.Remove(fly.C); _flies.Remove(fly);   // 吃掉
-                        if (_flies.Count == 0) { StartRoute(); _pause = 0.6; }
+                        BeginEat(fly);   // 到达食物：先停下吃一会儿，吃完才消失
                     }
                     else if (_dash) { _dash = false; StartRoute(); }
                     else if (++_wp >= _route.Count) { _walking = false; _crawl = false; }
@@ -564,7 +786,7 @@ public partial class MainWindow : Window
         UpdateLegs(dt, speed);
         Canvas.SetLeft(_pet.Body, _pos.X);
         Canvas.SetTop(_pet.Body, _pos.Y);
-        _pet.Rot.Angle = _heading * 180 / Math.PI;
+        _pet.Rot.Angle = (_heading + _nod) * 180 / Math.PI;   // 吃东西时头部点动
     }
 
     void UpdateLegs(double dt, double speed)
