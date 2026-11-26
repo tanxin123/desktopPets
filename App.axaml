@@ -15,8 +15,12 @@
                     <NativeMenu>
                         <NativeMenuItem Header="蜘蛛" ToggleType="Radio" Click="OnPickSpider" />
                         <NativeMenuItem Header="蟑螂" ToggleType="Radio" Click="OnPickRoach" />
+                        <NativeMenuItem Header="甲虫" ToggleType="Radio" Click="OnPickBeetle" />
+                        <NativeMenuItem Header="蚂蚁" ToggleType="Radio" Click="OnPickAnt" />
+                        <NativeMenuItem Header="蜈蚣" ToggleType="Radio" Click="OnPickCentipede" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="启用喂食" ToggleType="CheckBox" Click="OnToggleFeeding" />
+                        <NativeMenuItem Header="全屏时自动隐藏" ToggleType="CheckBox" Click="OnToggleAutoHide" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="退出" Click="OnExitClick" />
                     </NativeMenu>

@@ -1,0 +1,57 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Spider.Views.BeetleView"
+             IsHitTestVisible="False">
+
+    <UserControl.Resources>
+        <RadialGradientBrush x:Key="BtShell" Center="50%,35%" GradientOrigin="40%,25%" RadiusX="80%" RadiusY="80%">
+            <GradientStop Color="#3C3C48" Offset="0" />
+            <GradientStop Color="#16161C" Offset="0.6" />
+            <GradientStop Color="#08080B" Offset="1" />
+        </RadialGradientBrush>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="Line.bt-leg"><Setter Property="StrokeLineCap" Value="Round" /></Style>
+        <Style Selector="Line.bt-a"><Setter Property="StrokeThickness" Value="5" /><Setter Property="Stroke" Value="#14141A" /></Style>
+        <Style Selector="Line.bt-b"><Setter Property="StrokeThickness" Value="4" /><Setter Property="Stroke" Value="#121218" /></Style>
+        <Style Selector="Line.bt-c"><Setter Property="StrokeThickness" Value="3" /><Setter Property="Stroke" Value="#101016" /></Style>
+        <Style Selector="Line.bt-d"><Setter Property="StrokeThickness" Value="2" /><Setter Property="Stroke" Value="#0A0A0E" /></Style>
+    </UserControl.Styles>
+
+    <Canvas>
+        <!-- 6 条腿：L1~L3 左侧，R1~R3 右侧，每条 4 段 -->
+        <Canvas>
+            <Line x:Name="L1a" Classes="bt-leg bt-a" /><Line x:Name="L1b" Classes="bt-leg bt-b" /><Line x:Name="L1c" Classes="bt-leg bt-c" /><Line x:Name="L1d" Classes="bt-leg bt-d" />
+            <Line x:Name="L2a" Classes="bt-leg bt-a" /><Line x:Name="L2b" Classes="bt-leg bt-b" /><Line x:Name="L2c" Classes="bt-leg bt-c" /><Line x:Name="L2d" Classes="bt-leg bt-d" />
+            <Line x:Name="L3a" Classes="bt-leg bt-a" /><Line x:Name="L3b" Classes="bt-leg bt-b" /><Line x:Name="L3c" Classes="bt-leg bt-c" /><Line x:Name="L3d" Classes="bt-leg bt-d" />
+            <Line x:Name="R1a" Classes="bt-leg bt-a" /><Line x:Name="R1b" Classes="bt-leg bt-b" /><Line x:Name="R1c" Classes="bt-leg bt-c" /><Line x:Name="R1d" Classes="bt-leg bt-d" />
+            <Line x:Name="R2a" Classes="bt-leg bt-a" /><Line x:Name="R2b" Classes="bt-leg bt-b" /><Line x:Name="R2c" Classes="bt-leg bt-c" /><Line x:Name="R2d" Classes="bt-leg bt-d" />
+            <Line x:Name="R3a" Classes="bt-leg bt-a" /><Line x:Name="R3b" Classes="bt-leg bt-b" /><Line x:Name="R3c" Classes="bt-leg bt-c" /><Line x:Name="R3d" Classes="bt-leg bt-d" />
+        </Canvas>
+
+        <!-- 身体：原点 = 前胸背板与鞘翅连接处，头朝 -Y；按屏幕像素直接绘制（缩放 1） -->
+        <Canvas x:Name="BodyRoot" Width="0" Height="0">
+            <!-- 触角（棒状）：零尺寸 Canvas，旋转它即绕根部摆动 -->
+            <Canvas x:Name="AntL" Canvas.Left="-6" Canvas.Top="-44" Width="0" Height="0">
+                <Path Stroke="#0E0E12" StrokeThickness="1.6" StrokeLineCap="Round" Data="M 0,0 Q -6,-8 -10,-14" />
+                <Ellipse Canvas.Left="-14" Canvas.Top="-19" Width="7" Height="9" Fill="#0E0E12" />
+            </Canvas>
+            <Canvas x:Name="AntR" Canvas.Left="6" Canvas.Top="-44" Width="0" Height="0">
+                <Path Stroke="#0E0E12" StrokeThickness="1.6" StrokeLineCap="Round" Data="M 0,0 Q 6,-8 10,-14" />
+                <Ellipse Canvas.Left="7" Canvas.Top="-19" Width="7" Height="9" Fill="#0E0E12" />
+            </Canvas>
+            <!-- 大颚 -->
+            <Path Stroke="#0A0A0E" StrokeThickness="2.4" StrokeLineCap="Round" Data="M -5,-46 L -8,-56 M 5,-46 L 8,-56" />
+            <!-- 头 -->
+            <Ellipse Canvas.Left="-11" Canvas.Top="-48" Width="22" Height="20" Fill="#121218" Stroke="#050507" StrokeThickness="1.2" />
+            <!-- 鞘翅 -->
+            <Ellipse Canvas.Left="-28" Canvas.Top="-4" Width="56" Height="72" Fill="{StaticResource BtShell}" Stroke="#050507" StrokeThickness="1.5" />
+            <Path Stroke="#050507" StrokeThickness="1.4" Data="M 0,-2 L 0,68" />
+            <Path Stroke="#0A0A0E" StrokeThickness="1" Opacity="0.6" Data="M -14,2 Q -18,34 -12,62 M 14,2 Q 18,34 12,62" />
+            <Ellipse Canvas.Left="-17" Canvas.Top="8" Width="10" Height="40" Fill="#9A9AAA" Opacity="0.16" />
+            <!-- 前胸背板 -->
+            <Ellipse Canvas.Left="-21" Canvas.Top="-30" Width="42" Height="32" Fill="{StaticResource BtShell}" Stroke="#050507" StrokeThickness="1.5" />
+        </Canvas>
+    </Canvas>
+</UserControl>

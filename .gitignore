@@ -1,7 +1,7 @@
 # 构建输出
 bin/
 obj/
-
+publish/
 [Dd]ebug/
 [Rr]elease/
 *.user

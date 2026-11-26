@@ -9,6 +9,10 @@ public partial class RoachView : UserControl
     /// <summary>身体根节点（原点 = 前胸背板与翅鞘连接处）。</summary>
     public Canvas BodyCanvas => BodyRoot;
 
+    /// <summary>左右触角（零尺寸 Canvas，旋转它即绕触角根部摆动）。</summary>
+    public Control AntennaL => AntL;
+    public Control AntennaR => AntR;
+
     /// <summary>6 条腿 × 4 段，顺序：L1~L3、R1~R3。</summary>
     public Line[][] Legs { get; }
 

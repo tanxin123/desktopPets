@@ -9,6 +9,10 @@ public partial class SpiderView : UserControl
     /// <summary>身体根节点（原点 = 头胸部与腹部连接处）。</summary>
     public Canvas BodyCanvas => BodyRoot;
 
+    /// <summary>左右须肢（绕根部摆动，作为蜘蛛的“触角”）。</summary>
+    public Control AntennaL => PalpL;
+    public Control AntennaR => PalpR;
+
     /// <summary>8 条腿 × 4 段，顺序：L1~L4、R1~R4。</summary>
     public Line[][] Legs { get; }
 

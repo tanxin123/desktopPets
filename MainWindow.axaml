@@ -17,6 +17,9 @@
     <Canvas x:Name="Stage" Background="Transparent">
         <v:SpiderView x:Name="SpiderPet" ClipToBounds="False" />
         <v:RoachView x:Name="RoachPet" ClipToBounds="False" IsVisible="False" />
+        <v:BeetleView x:Name="BeetlePet" ClipToBounds="False" IsVisible="False" />
+        <v:AntView x:Name="AntPet" ClipToBounds="False" IsVisible="False" />
+        <v:CentipedeView x:Name="CentipedePet" ClipToBounds="False" IsVisible="False" />
 
     </Canvas>
 </Window>

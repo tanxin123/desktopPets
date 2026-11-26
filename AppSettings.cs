@@ -9,6 +9,7 @@ public sealed class AppSettings
 {
     public string Pet { get; set; } = "spider";      // "spider" 或 "roach"
     public bool FeedingEnabled { get; set; } = true;
+    public bool AutoHideFullscreen { get; set; } = true;   // 前台有全屏应用时自动隐藏并暂停
 
     static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DesktopPet");
     static readonly string FilePath = Path.Combine(Dir, "settings.json");
@@ -23,7 +24,7 @@ public sealed class AppSettings
                 var s = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath));
                 if (s != null)
                 {
-                    if (s.Pet != "roach") s.Pet = "spider";   // 非法值回退默认
+                    if (s.Pet is not ("spider" or "roach" or "beetle" or "ant" or "centipede")) s.Pet = "spider";   // 非法值回退默认
                     return s;
                 }
             }

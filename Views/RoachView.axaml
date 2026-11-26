@@ -26,9 +26,13 @@
 
         <!-- 身体：原点 = 前胸背板与翅鞘连接处，头朝 -Y -->
         <Canvas x:Name="BodyRoot" Width="0" Height="0">
-            <!-- 触角 -->
-            <Path Stroke="#1A0D06" StrokeThickness="1.6" StrokeLineCap="Round"
-                  Data="M -3,-50 Q -14,-88 -46,-128 M 3,-50 Q 14,-88 46,-128" />
+            <!-- 触角：每根放进以根部为原点的零尺寸 Canvas，旋转 Canvas 即绕根部摆动 -->
+            <Canvas x:Name="AntL" Canvas.Left="-3" Canvas.Top="-50" Width="0" Height="0">
+                <Path Stroke="#1A0D06" StrokeThickness="1.6" StrokeLineCap="Round" Data="M 0,0 Q -11,-38 -43,-78" />
+            </Canvas>
+            <Canvas x:Name="AntR" Canvas.Left="3" Canvas.Top="-50" Width="0" Height="0">
+                <Path Stroke="#1A0D06" StrokeThickness="1.6" StrokeLineCap="Round" Data="M 0,0 Q 11,-38 43,-78" />
+            </Canvas>
             <!-- 尾须 -->
             <Path Stroke="#1A0D06" StrokeThickness="2" StrokeLineCap="Round" Data="M -5,100 L -8,112 M 5,100 L 8,112" />
             <!-- 头（大部分被前胸背板盖住） -->

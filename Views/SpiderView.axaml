@@ -67,8 +67,8 @@
             <!-- 螯肢与须肢 -->
             <Ellipse Canvas.Left="-13" Canvas.Top="-70" Width="11" Height="17" Fill="#180D08" />
             <Ellipse Canvas.Left="2" Canvas.Top="-70" Width="11" Height="17" Fill="#180D08" />
-            <Ellipse Canvas.Left="-30" Canvas.Top="-64" Width="8" Height="22" Fill="#1F170E" />
-            <Ellipse Canvas.Left="22" Canvas.Top="-64" Width="8" Height="22" Fill="#1F170E" />
+            <Ellipse x:Name="PalpL" Canvas.Left="-30" Canvas.Top="-64" Width="8" Height="22" Fill="#1F170E" RenderTransformOrigin="50%,100%" />
+            <Ellipse x:Name="PalpR" Canvas.Left="22" Canvas.Top="-64" Width="8" Height="22" Fill="#1F170E" RenderTransformOrigin="50%,100%" />
 
             <!-- 8 只眼 -->
             <Ellipse Canvas.Left="-14" Canvas.Top="-42" Width="5" Height="5" Fill="#040201" />
