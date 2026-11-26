@@ -13,8 +13,10 @@
             <TrayIcon Icon="/Assets/spider.png" ToolTipText="桌面宠物">
                 <TrayIcon.Menu>
                     <NativeMenu>
-                        <NativeMenuItem Header="蜘蛛" Click="OnPickSpider" />
-                        <NativeMenuItem Header="蟑螂" Click="OnPickRoach" />
+                        <NativeMenuItem Header="蜘蛛" ToggleType="Radio" Click="OnPickSpider" />
+                        <NativeMenuItem Header="蟑螂" ToggleType="Radio" Click="OnPickRoach" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="启用喂食" ToggleType="CheckBox" Click="OnToggleFeeding" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="退出" Click="OnExitClick" />
                     </NativeMenu>

@@ -115,6 +115,20 @@ public partial class MainWindow : Window
         BuildLegs();
     }
 
+    // ───────── 喂食开关（托盘菜单调用）─────────
+    public bool FeedingEnabled { get; private set; } = true;
+
+    public void SetFeeding(bool on)
+    {
+        FeedingEnabled = on;
+        if (on || _flies.Count == 0) return;
+        // 关闭喂食：清掉场上的苍蝇。追击中 _walking 可能是被追击强行置位的，
+        // 路线下标可能已越界，所以必须重新生成路线，避免 Tick 里访问 _route[_wp] 越界
+        foreach (var f in _flies) Stage.Children.Remove(f.C);
+        _flies.Clear();
+        StartRoute();
+    }
+
     void BuildLegs()
     {
         _legs.Clear();
@@ -201,6 +215,7 @@ public partial class MainWindow : Window
     // ───────── 苍蝇 ─────────
     void AddFly(Vector p)
     {
+        if (!FeedingEnabled) return;    // 喂食被禁用
         if (_flies.Count > 0) return;   // 屏幕上同时只允许一只苍蝇
         var c = new Canvas { Width = 0, Height = 0 };
         void E(double x, double y, double w, double h, double rot = 0)
