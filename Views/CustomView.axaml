@@ -1,0 +1,35 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Spider.Views.CustomView"
+             IsHitTestVisible="False">
+
+    <UserControl.Styles>
+        <Style Selector="Line.cu-leg"><Setter Property="StrokeLineCap" Value="Round" /></Style>
+        <Style Selector="Line.cu-a"><Setter Property="StrokeThickness" Value="3.6" /><Setter Property="Stroke" Value="#1A1A20" /></Style>
+        <Style Selector="Line.cu-b"><Setter Property="StrokeThickness" Value="3" /><Setter Property="Stroke" Value="#17171C" /></Style>
+        <Style Selector="Line.cu-c"><Setter Property="StrokeThickness" Value="2.4" /><Setter Property="Stroke" Value="#141418" /></Style>
+        <Style Selector="Line.cu-d"><Setter Property="StrokeThickness" Value="1.6" /><Setter Property="Stroke" Value="#0C0C10" /></Style>
+    </UserControl.Styles>
+
+    <Canvas>
+        <Canvas>
+            <Line x:Name="L1a" Classes="cu-leg cu-a" /><Line x:Name="L1b" Classes="cu-leg cu-b" /><Line x:Name="L1c" Classes="cu-leg cu-c" /><Line x:Name="L1d" Classes="cu-leg cu-d" />
+            <Line x:Name="L2a" Classes="cu-leg cu-a" /><Line x:Name="L2b" Classes="cu-leg cu-b" /><Line x:Name="L2c" Classes="cu-leg cu-c" /><Line x:Name="L2d" Classes="cu-leg cu-d" />
+            <Line x:Name="L3a" Classes="cu-leg cu-a" /><Line x:Name="L3b" Classes="cu-leg cu-b" /><Line x:Name="L3c" Classes="cu-leg cu-c" /><Line x:Name="L3d" Classes="cu-leg cu-d" />
+            <Line x:Name="R1a" Classes="cu-leg cu-a" /><Line x:Name="R1b" Classes="cu-leg cu-b" /><Line x:Name="R1c" Classes="cu-leg cu-c" /><Line x:Name="R1d" Classes="cu-leg cu-d" />
+            <Line x:Name="R2a" Classes="cu-leg cu-a" /><Line x:Name="R2b" Classes="cu-leg cu-b" /><Line x:Name="R2c" Classes="cu-leg cu-c" /><Line x:Name="R2d" Classes="cu-leg cu-d" />
+            <Line x:Name="R3a" Classes="cu-leg cu-a" /><Line x:Name="R3b" Classes="cu-leg cu-b" /><Line x:Name="R3c" Classes="cu-leg cu-c" /><Line x:Name="R3d" Classes="cu-leg cu-d" />
+        </Canvas>
+
+        <!-- 身体：原点在图片中心，头朝 -Y，所以自定义图片请让“头”朝上 -->
+        <Canvas x:Name="BodyRoot" Width="0" Height="0">
+            <Canvas x:Name="AntL" Canvas.Left="-4" Canvas.Top="-36" Width="0" Height="0">
+                <Path Stroke="#141418" StrokeThickness="1.2" StrokeLineCap="Round" Data="M 0,0 Q -4,-6 -8,-10" />
+            </Canvas>
+            <Canvas x:Name="AntR" Canvas.Left="4" Canvas.Top="-36" Width="0" Height="0">
+                <Path Stroke="#141418" StrokeThickness="1.2" StrokeLineCap="Round" Data="M 0,0 Q 4,-6 8,-10" />
+            </Canvas>
+            <Image x:Name="Pic" Canvas.Left="-40" Canvas.Top="-40" Width="80" Height="80" Stretch="Uniform" />
+        </Canvas>
+    </Canvas>
+</UserControl>

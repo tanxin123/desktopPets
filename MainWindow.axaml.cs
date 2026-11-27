@@ -68,7 +68,7 @@ public partial class MainWindow : Window
         public ScaleTransform Sc = null!; public double Base;   // 吃的时候逐渐缩小
     }
 
-    readonly Pet _spider, _roach, _beetle, _ant, _centipede;
+    readonly Pet _spider, _roach, _beetle, _ant, _centipede, _ladybug, _custom;
     readonly Dictionary<string, Pet> _pets = new();
     Pet _pet = null!;
     readonly List<Leg> _legs = new();
@@ -99,6 +99,8 @@ public partial class MainWindow : Window
     TextBlock? _zzz;
     sealed class Print { public Avalonia.Controls.Shapes.Ellipse E = null!; public double Life; }
     readonly List<Print> _prints = new();
+    sealed class Web { public Canvas C = null!; public double Life; }
+    readonly List<Web> _webs = new();
     static readonly IBrush PrintBrush = new SolidColorBrush(Color.Parse("#55000000"));
     Fly? _eat;                       // 正在吃的食物
     double _eatT, _nod;              // 吃东西剩余时间；头部点动角度（弧度，只影响显示）
@@ -152,6 +154,26 @@ public partial class MainWindow : Window
             Out = new Vector[] { new(0.7, -0.7), new(1, 0), new(0.7, 0.7) },
             Rest = new Vector[] { new(24, -28), new(31, -4), new(24, 24) },
         };
+        _ladybug = new Pet
+        {
+            View = LadybugPet, Body = LadybugPet.BodyCanvas, Legs = LadybugPet.Legs,
+            AntL = LadybugPet.AntennaL, AntR = LadybugPet.AntennaR,
+            LenA = 4, LenB = 15, LenC = 18, LenD = 7, Reach = 52, Scale = 1, Lead = 0.5, StepScale = 0.5,
+            HipX = 13, Food = "leaf", FoodScale = 0.8,
+            HipY = new double[] { -14, 6, 28 },
+            Out = new Vector[] { new(0.7, -0.7), new(1, 0), new(0.7, 0.7) },
+            Rest = new Vector[] { new(38, -30), new(48, 6), new(38, 42) },
+        };
+        _custom = new Pet
+        {
+            View = CustomPet, Body = CustomPet.BodyCanvas, Legs = CustomPet.Legs,
+            AntL = CustomPet.AntennaL, AntR = CustomPet.AntennaR,
+            LenA = 5, LenB = 20, LenC = 24, LenD = 8, Reach = 60, Scale = 1, Lead = 0.5, StepScale = 0.55,
+            HipX = 14, Food = "crumb",
+            HipY = new double[] { -16, 6, 28 },
+            Out = new Vector[] { new(0.7, -0.7), new(1, 0), new(0.7, 0.7) },
+            Rest = new Vector[] { new(42, -34), new(52, 6), new(42, 44) },
+        };
         // 蜈蚣：每个体节一对腿，腿根在体节中心，Hip/Rest 都是相对所在体节的坐标；最后一对腿更长并向后拖
         const int cn = Views.CentipedeView.Pairs;
         var cHipY = new double[cn];
@@ -181,6 +203,8 @@ public partial class MainWindow : Window
         _pets["beetle"] = _beetle;
         _pets["ant"] = _ant;
         _pets["centipede"] = _centipede;
+        _pets["ladybug"] = _ladybug;
+        _pets["custom"] = _custom;
 
         foreach (var p in _pets.Values)
             p.Body.RenderTransform = new TransformGroup { Children = { p.BodySc, p.Rot } };
@@ -235,6 +259,7 @@ public partial class MainWindow : Window
     {
         if (!_pets.TryGetValue(name, out var p)) { name = "spider"; p = _spider; }   // 未知名字回退蜘蛛
         if (_sleeping) WakeUp();
+        if (name == "custom") CustomPet.ReloadImage();
         _pet = p;
         if (_flies.Count > 0 || _eat != null) ClearFood();   // 食物种类随宠物变化，切换时清掉场上的食物
         foreach (var kv in _pets) kv.Value.View.IsVisible = kv.Key == name;
@@ -651,6 +676,7 @@ public partial class MainWindow : Window
     void BeginEat(Fly f)
     {
         _eat = f; _eatT = EatTime; _phase = 0;
+        SoundFx.Play("eat");
         StopPose();
     }
 
@@ -797,6 +823,7 @@ public partial class MainWindow : Window
         _dashTarget = new Vector(
             Math.Clamp(_pos.X + Math.Sin(ang) * dist, _ax + 80, _ax + _aw - 80),
             Math.Clamp(_pos.Y - Math.Cos(ang) * dist, _ay + 80, _ay + _ah - 80));
+        SoundFx.Play("dash");
         CancelEat();
         _dash = true; _walking = true; _pause = 0;
         _crawl = false; StopPose();
@@ -842,7 +869,7 @@ public partial class MainWindow : Window
                         BeginEat(fly);   // 到达食物：先停下吃一会儿，吃完才消失
                     }
                     else if (_dash) { _dash = false; StartRoute(); }
-                    else if (++_wp >= _route.Count) { _walking = false; _crawl = false; }
+                    else if (++_wp >= _route.Count) { if (_crawl && _pet == _spider) SpinWeb(_pos); _walking = false; _crawl = false; }
                     else _pause = 0.2 + _rnd.NextDouble() * 0.8;   // 走走停停
                 }
                 else
@@ -860,6 +887,7 @@ public partial class MainWindow : Window
         PollInput(dt);
         UpdateIdle(dt);
         UpdatePrints(dt);
+        UpdateWebs(dt);
         UpdateChain();
         UpdateLegs(dt, speed);
         Canvas.SetLeft(_pet.Body, _pos.X);
@@ -1035,6 +1063,7 @@ public partial class MainWindow : Window
             Math.Clamp(_pos.X + u.X * dist, _ax + 80, _ax + _aw - 80),
             Math.Clamp(_pos.Y + u.Y * dist, _ay + 80, _ay + _ah - 80));
         _dodgeCd = 4;
+        SoundFx.Play("dash");
         CancelEat();
         _dash = true; _walking = true; _pause = 0;
         _crawl = false; StopPose();
@@ -1060,6 +1089,42 @@ public partial class MainWindow : Window
         Stage.Children.Insert(0, e);   // 放在最底层，宠物盖在脚印上面
         _prints.Add(new Print { E = e, Life = 2.5 });
         if (_prints.Count > 80) { Stage.Children.Remove(_prints[0].E); _prints.RemoveAt(0); }
+    }
+
+    // 蜘蛛网：8 条辐射线加 3 圈环线，放在最底层，25 秒后淡出，最多同时 6 张
+    void SpinWeb(Vector p)
+    {
+        if (_webs.Count >= 6) { Stage.Children.Remove(_webs[0].C); _webs.RemoveAt(0); }
+        double R = 46 * _size, off = _rnd.NextDouble() * Math.PI;
+        string F(double v) => v.ToString("0.#", System.Globalization.CultureInfo.InvariantCulture);
+        var sb = new System.Text.StringBuilder();
+        for (int i = 0; i < 8; i++)
+        {
+            double a = off + i * Math.PI / 4;
+            sb.Append($"M 0,0 L {F(Math.Cos(a) * R)},{F(Math.Sin(a) * R)} ");
+        }
+        foreach (double k in new[] { 0.35, 0.65, 1.0 })
+            for (int i = 0; i <= 8; i++)
+            {
+                double a = off + i * Math.PI / 4;
+                sb.Append(i == 0 ? "M " : "L ").Append($"{F(Math.Cos(a) * R * k)},{F(Math.Sin(a) * R * k)} ");
+            }
+        var c = new Canvas { Width = 0, Height = 0, IsHitTestVisible = false };
+        c.Children.Add(Sh(sb.ToString(), null, "#AADDDDDD", 0.8));
+        Canvas.SetLeft(c, p.X); Canvas.SetTop(c, p.Y);
+        Stage.Children.Insert(0, c);
+        _webs.Add(new Web { C = c, Life = 25 });
+    }
+
+    void UpdateWebs(double dt)
+    {
+        for (int i = _webs.Count - 1; i >= 0; i--)
+        {
+            var w = _webs[i];
+            w.Life -= dt;
+            if (w.Life <= 0) { Stage.Children.Remove(w.C); _webs.RemoveAt(i); }
+            else w.C.Opacity = Math.Min(1, w.Life / 3);
+        }
     }
 
     void UpdatePrints(double dt)

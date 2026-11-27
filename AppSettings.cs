@@ -16,6 +16,9 @@ public sealed class AppSettings
     public bool AutoStart { get; set; } = false;           // 开机自启（计划任务）
     public bool FollowMouse { get; set; } = false;         // 跟随鼠标
     public bool AutoHideFullscreen { get; set; } = true;   // 前台有全屏应用时自动隐藏并暂停
+    public bool SoundEnabled { get; set; } = false;        // 音效（吃东西、冲刺），默认关闭
+    public bool AutoCheckUpdate { get; set; } = true;      // 启动后自动检查 GitHub 上的新版本
+    public string IgnoredVersion { get; set; } = "";       // 用户选择“忽略此版本”的版本号，自动检查时不再提示
 
     static readonly string Dir = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ApplicationData), "DesktopPet");
     static readonly string FilePath = Path.Combine(Dir, "settings.json");
@@ -31,7 +34,7 @@ public sealed class AppSettings
                 if (s != null)
                 {
                     // 非法值一律回退默认
-                    if (s.Pet is not ("spider" or "roach" or "beetle" or "ant" or "centipede")) s.Pet = "spider";
+                    if (s.Pet is not ("spider" or "roach" or "beetle" or "ant" or "centipede" or "ladybug" or "custom")) s.Pet = "spider";
                     if (s.Size is not ("small" or "medium" or "large")) s.Size = "medium";
                     if (s.Speed is not ("slow" or "normal" or "fast")) s.Speed = "normal";
                     if (s.Monitor < 0) s.Monitor = 0;

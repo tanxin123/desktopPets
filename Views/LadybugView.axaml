@@ -1,0 +1,60 @@
+<UserControl xmlns="https://github.com/avaloniaui"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             x:Class="Spider.Views.LadybugView"
+             IsHitTestVisible="False">
+
+    <UserControl.Resources>
+        <RadialGradientBrush x:Key="LbShell" Center="50%,35%" GradientOrigin="40%,25%" RadiusX="80%" RadiusY="80%">
+            <GradientStop Color="#F0584A" Offset="0" />
+            <GradientStop Color="#C4271E" Offset="0.6" />
+            <GradientStop Color="#7A120D" Offset="1" />
+        </RadialGradientBrush>
+    </UserControl.Resources>
+
+    <UserControl.Styles>
+        <Style Selector="Line.lb-leg"><Setter Property="StrokeLineCap" Value="Round" /></Style>
+        <Style Selector="Line.lb-a"><Setter Property="StrokeThickness" Value="3.6" /><Setter Property="Stroke" Value="#1A1A20" /></Style>
+        <Style Selector="Line.lb-b"><Setter Property="StrokeThickness" Value="3" /><Setter Property="Stroke" Value="#17171C" /></Style>
+        <Style Selector="Line.lb-c"><Setter Property="StrokeThickness" Value="2.4" /><Setter Property="Stroke" Value="#141418" /></Style>
+        <Style Selector="Line.lb-d"><Setter Property="StrokeThickness" Value="1.6" /><Setter Property="Stroke" Value="#0C0C10" /></Style>
+    </UserControl.Styles>
+
+    <Canvas>
+        <!-- 6 条腿：L1~L3 左侧，R1~R3 右侧，每条 4 段 -->
+        <Canvas>
+            <Line x:Name="L1a" Classes="lb-leg lb-a" /><Line x:Name="L1b" Classes="lb-leg lb-b" /><Line x:Name="L1c" Classes="lb-leg lb-c" /><Line x:Name="L1d" Classes="lb-leg lb-d" />
+            <Line x:Name="L2a" Classes="lb-leg lb-a" /><Line x:Name="L2b" Classes="lb-leg lb-b" /><Line x:Name="L2c" Classes="lb-leg lb-c" /><Line x:Name="L2d" Classes="lb-leg lb-d" />
+            <Line x:Name="L3a" Classes="lb-leg lb-a" /><Line x:Name="L3b" Classes="lb-leg lb-b" /><Line x:Name="L3c" Classes="lb-leg lb-c" /><Line x:Name="L3d" Classes="lb-leg lb-d" />
+            <Line x:Name="R1a" Classes="lb-leg lb-a" /><Line x:Name="R1b" Classes="lb-leg lb-b" /><Line x:Name="R1c" Classes="lb-leg lb-c" /><Line x:Name="R1d" Classes="lb-leg lb-d" />
+            <Line x:Name="R2a" Classes="lb-leg lb-a" /><Line x:Name="R2b" Classes="lb-leg lb-b" /><Line x:Name="R2c" Classes="lb-leg lb-c" /><Line x:Name="R2d" Classes="lb-leg lb-d" />
+            <Line x:Name="R3a" Classes="lb-leg lb-a" /><Line x:Name="R3b" Classes="lb-leg lb-b" /><Line x:Name="R3c" Classes="lb-leg lb-c" /><Line x:Name="R3d" Classes="lb-leg lb-d" />
+        </Canvas>
+
+        <!-- 身体：原点 = 前胸背板与鞘翅连接处，头朝 -Y；按屏幕像素直接绘制（缩放 1） -->
+        <Canvas x:Name="BodyRoot" Width="0" Height="0">
+            <Canvas x:Name="AntL" Canvas.Left="-4" Canvas.Top="-34" Width="0" Height="0">
+                <Path Stroke="#141418" StrokeThickness="1.2" StrokeLineCap="Round" Data="M 0,0 Q -4,-6 -8,-10" />
+                <Ellipse Canvas.Left="-11" Canvas.Top="-14" Width="5" Height="6" Fill="#141418" />
+            </Canvas>
+            <Canvas x:Name="AntR" Canvas.Left="4" Canvas.Top="-34" Width="0" Height="0">
+                <Path Stroke="#141418" StrokeThickness="1.2" StrokeLineCap="Round" Data="M 0,0 Q 4,-6 8,-10" />
+                <Ellipse Canvas.Left="6" Canvas.Top="-14" Width="5" Height="6" Fill="#141418" />
+            </Canvas>
+            <!-- 头 -->
+            <Ellipse Canvas.Left="-8" Canvas.Top="-36" Width="16" Height="14" Fill="#141418" Stroke="#050507" StrokeThickness="1" />
+            <!-- 鞘翅 -->
+            <Ellipse Canvas.Left="-22" Canvas.Top="-3" Width="44" Height="54" Fill="{StaticResource LbShell}" Stroke="#050507" StrokeThickness="1.4" />
+            <Path Stroke="#050507" StrokeThickness="1.2" Data="M 0,-1 L 0,51" />
+            <!-- 斑点 -->
+            <Ellipse Canvas.Left="-15" Canvas.Top="6" Width="9" Height="9" Fill="#0A0A0E" />
+            <Ellipse Canvas.Left="6" Canvas.Top="6" Width="9" Height="9" Fill="#0A0A0E" />
+            <Ellipse Canvas.Left="-17" Canvas.Top="22" Width="10" Height="10" Fill="#0A0A0E" />
+            <Ellipse Canvas.Left="7" Canvas.Top="22" Width="10" Height="10" Fill="#0A0A0E" />
+            <Ellipse Canvas.Left="-5" Canvas.Top="37" Width="10" Height="9" Fill="#0A0A0E" />
+            <!-- 前胸背板：深色底加两块白斑 -->
+            <Ellipse Canvas.Left="-16" Canvas.Top="-24" Width="32" Height="24" Fill="#141418" Stroke="#050507" StrokeThickness="1.2" />
+            <Ellipse Canvas.Left="-13" Canvas.Top="-21" Width="8" Height="10" Fill="#F2F2EE" />
+            <Ellipse Canvas.Left="5" Canvas.Top="-21" Width="8" Height="10" Fill="#F2F2EE" />
+        </Canvas>
+    </Canvas>
+</UserControl>

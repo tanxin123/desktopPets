@@ -17,6 +17,8 @@
                         <NativeMenuItem Header="甲虫" ToggleType="Radio" Click="OnPickBeetle" />
                         <NativeMenuItem Header="蚂蚁" ToggleType="Radio" Click="OnPickAnt" />
                         <NativeMenuItem Header="蜈蚣" ToggleType="Radio" Click="OnPickCentipede" />
+                        <NativeMenuItem Header="瓢虫" ToggleType="Radio" Click="OnPickLadybug" />
+                        <NativeMenuItem Header="自定义" ToggleType="Radio" Click="OnPickCustom" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="宠物大小">
                             <NativeMenu>
@@ -53,6 +55,10 @@
                         <NativeMenuItem Header="全屏时自动隐藏" ToggleType="CheckBox" Click="OnToggleAutoHide" />
                         <NativeMenuItem Header="跟随鼠标" ToggleType="CheckBox" Click="OnToggleFollow" />
                         <NativeMenuItem Header="开机自启" ToggleType="CheckBox" Click="OnToggleAutoStart" />
+                        <NativeMenuItem Header="音效" ToggleType="CheckBox" Click="OnToggleSound" />
+                        <NativeMenuItem Header="自动检查更新" ToggleType="CheckBox" Click="OnToggleAutoUpdate" />
+                        <NativeMenuItem Header="检查更新" Click="OnCheckUpdate" />
+                        <NativeMenuItem Header="设置…" Click="OnOpenSettings" />
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="退出" Click="OnExitClick" />
                     </NativeMenu>

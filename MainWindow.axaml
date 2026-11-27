@@ -20,6 +20,8 @@
         <v:BeetleView x:Name="BeetlePet" ClipToBounds="False" IsVisible="False" />
         <v:AntView x:Name="AntPet" ClipToBounds="False" IsVisible="False" />
         <v:CentipedeView x:Name="CentipedePet" ClipToBounds="False" IsVisible="False" />
+        <v:LadybugView x:Name="LadybugPet" ClipToBounds="False" IsVisible="False" />
+        <v:CustomView x:Name="CustomPet" ClipToBounds="False" IsVisible="False" />
 
     </Canvas>
 </Window>
