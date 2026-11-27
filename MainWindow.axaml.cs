@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Linq;
 using System.Runtime.InteropServices;
 using Avalonia;
 using Avalonia.Controls;
@@ -12,7 +13,8 @@ namespace Spider;
 
 public partial class MainWindow : Window
 {
-    const double StepTime = 0.07, BaseSpeed = 420, TurnRate = 3.6;
+    const double StepTime = 0.07, TurnRate = 3.6;
+    double BaseSpeed = 420;   // 受速度档位影响，见 SetSpeed
     const double DashSpeed = 1500, DashTurn = 16, DashStepTime = 0.04;
     const double ChaseSpeed = 900, ChaseTurn = 10;
     const double EatTime = 1.3, FollowNear = 180, FollowFar = 280;   // 吃东西时长（秒）；跟随鼠标时停下 / 出发的距离
@@ -26,6 +28,9 @@ public partial class MainWindow : Window
         public Canvas Body = null!;
         public Line[][] Legs = null!;                 // 顺序：左侧各腿，再右侧各腿
         public RotateTransform Rot = new();
+        public ScaleTransform BodySc = new();         // 身体缩放（宠物自身比例 × 大小档位）
+        public RotateTransform[]? SegRot;             // 分节宠物（蜈蚣）每个体节的旋转与缩放
+        public ScaleTransform[]? SegSc;
         public double StepScale = 1;                  // 迈步阈值系数：体型小的宠物更勤快地迈步
         public double LenA, LenB, LenC, LenD;         // 腿四段长度
         public double Reach;                          // 脚离髋的最大伸展，超过强制迈步
@@ -76,10 +81,25 @@ public partial class MainWindow : Window
     double _heading;   // 弧度，0 = 朝上，顺时针为正（与 RotateTransform 一致）
     double _last, _pause;
     double _w = 1920, _h = 1080;
+    double _ax, _ay, _aw = 1920, _ah = 1080;   // 宠物的活动范围（窗口坐标），默认整个虚拟桌面
+    double _size = 1;                          // 大小档位系数
+    int _monitor;                              // 0 = 所有显示器；n = 第 n 块
+    int[] _hotVks = { 0x11, 0x10, 0x51 };      // 退出快捷键的虚拟键码，默认 Ctrl+Shift+Q
+    DispatcherTimer? _timer;
+    int _intervalMs = 16;
+    bool _opened;
     bool _walking, _dash, _chase, _wasDown;
     bool _crawl, _look;
     double _lookTarget, _waveT, _twitchT, _phase, _antPhase, _idleWait = 3, _antAmp = 3;
     int _wp;
+    bool _sleeping, _night, _capturing;                         // 睡觉中 / 夜间 / 窗口正在接收点击
+    double _sleepT, _hunger, _timeCheck, _dodgeCd, _curPrevT = -1;   // 睡眠剩余时间；饥饿 0~1；时段检查计时；躲鼠标冷却；上次光标采样时间
+    Vector _curPrev;
+    IntPtr _hwnd;
+    TextBlock? _zzz;
+    sealed class Print { public Avalonia.Controls.Shapes.Ellipse E = null!; public double Life; }
+    readonly List<Print> _prints = new();
+    static readonly IBrush PrintBrush = new SolidColorBrush(Color.Parse("#55000000"));
     Fly? _eat;                       // 正在吃的食物
     double _eatT, _nod;              // 吃东西剩余时间；头部点动角度（弧度，只影响显示）
     bool _follow, _following;        // 跟随鼠标是否生效 / 是否正在靠近光标
@@ -163,7 +183,23 @@ public partial class MainWindow : Window
         _pets["centipede"] = _centipede;
 
         foreach (var p in _pets.Values)
-            p.Body.RenderTransform = new TransformGroup { Children = { new ScaleTransform(p.Scale, p.Scale), p.Rot } };
+            p.Body.RenderTransform = new TransformGroup { Children = { p.BodySc, p.Rot } };
+
+        // 蜈蚣的每个体节原来只有旋转，这里换成“缩放 + 旋转”，这样大小档位对体节也生效
+        {
+            var segs = _centipede.Segs!;
+            _centipede.SegRot = new RotateTransform[segs.Length];
+            _centipede.SegSc = new ScaleTransform[segs.Length];
+            for (int i = 0; i < segs.Length; i++)
+            {
+                var r = (RotateTransform)segs[i].RenderTransform!;
+                var sc = new ScaleTransform();
+                _centipede.SegRot[i] = r;
+                _centipede.SegSc[i] = sc;
+                segs[i].RenderTransform = new TransformGroup { Children = { sc, r } };
+            }
+        }
+        ApplySize();
 
         foreach (var pet in _pets.Values)
         {
@@ -171,22 +207,26 @@ public partial class MainWindow : Window
             pet.AntR.RenderTransform = pet.AntRotR;
         }
 
+        _zzz = new TextBlock { Text = "Z z z", FontSize = 18, FontWeight = FontWeight.Bold, Foreground = new SolidColorBrush(Color.Parse("#CC7FB2FF")), IsVisible = false, IsHitTestVisible = false };
+        Stage.Children.Add(_zzz);
         SetPet("spider");
 
         Opened += (_, _) =>
         {
             FitToAllScreens();
+            ApplyArea();
+            _opened = true;
             // 视图本身没有内容尺寸（身体和腿都用绝对坐标画），显式撑满窗口，避免 0×0 导致不渲染
             foreach (var pp in _pets.Values) { pp.View.Width = _w; pp.View.Height = _h; }
             MakeClickThrough();
-            _pos = new Vector(_w / 2, _h / 2);
+            _pos = new Vector(_ax + _aw / 2, _ay + _ah / 2);
             ResetChain();
             foreach (var l in _legs) l.Foot = LW(l, l.Rest);
             StartRoute();
             _last = _clock.Elapsed.TotalSeconds;
-            var t = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(8) };
-            t.Tick += (_, _) => Tick();
-            t.Start();
+            _timer = new DispatcherTimer(DispatcherPriority.Render) { Interval = TimeSpan.FromMilliseconds(_intervalMs) };
+            _timer.Tick += (_, _) => Tick();
+            _timer.Start();
         };
     }
 
@@ -194,6 +234,7 @@ public partial class MainWindow : Window
     public void SetPet(string name)
     {
         if (!_pets.TryGetValue(name, out var p)) { name = "spider"; p = _spider; }   // 未知名字回退蜘蛛
+        if (_sleeping) WakeUp();
         _pet = p;
         if (_flies.Count > 0 || _eat != null) ClearFood();   // 食物种类随宠物变化，切换时清掉场上的食物
         foreach (var kv in _pets) kv.Value.View.IsVisible = kv.Key == name;
@@ -212,6 +253,24 @@ public partial class MainWindow : Window
     void UpdateIdle(double dt)
     {
         bool still = !_walking && !_dash && !_chase && _eat == null;
+
+        _hunger = Math.Min(1, _hunger + dt / 480);   // 约 8 分钟饿满
+        if ((_timeCheck -= dt) <= 0) { _timeCheck = 30; int hr = DateTime.Now.Hour; _night = hr >= 23 || hr < 6; }
+        if (_sleeping)
+        {
+            if (!still) WakeUp();
+            else if ((_sleepT -= dt) <= 0) WakeUp();
+            else
+            {
+                _antPhase += dt * 0.8;
+                _pet.AntRotL.Angle = Math.Sin(_antPhase) * 1.2;
+                _pet.AntRotR.Angle = Math.Sin(_antPhase + 1.7) * 1.2;
+                double b = 1 + Math.Sin(_clock.Elapsed.TotalSeconds * 2.2) * 0.015;   // 呼吸起伏
+                _pet.BodySc.ScaleX = _pet.BodySc.ScaleY = _pet.Scale * _size * b;
+                UpdateZzz();
+                return;
+            }
+        }
 
         // 触角（蟑螂）/ 须肢（蜘蛛）：平时慢摆，抖动时幅度和频率都变大
         if (_twitchT > 0) _twitchT -= dt;
@@ -252,8 +311,11 @@ public partial class MainWindow : Window
             _idleWait -= dt;
             if (_idleWait <= 0)
             {
-                _idleWait = IdleMin + _rnd.NextDouble() * (IdleMax - IdleMin);
-                switch (_rnd.Next(6))
+                _idleWait = (IdleMin + _rnd.NextDouble() * (IdleMax - IdleMin)) * (1 - 0.4 * _hunger);
+                if (_rnd.NextDouble() < (_night ? 0.4 : 0.07) * (1 - _hunger)) { StartSleep(); return; }   // 夜里更容易睡，饿了不睡
+                int pick = _rnd.Next(6);
+                if (_hunger > 0.6 && _rnd.NextDouble() < 0.4) pick = 2;   // 饿了就爱抖触角
+                switch (pick)
                 {
                     case 0:
                         _look = true;
@@ -274,7 +336,7 @@ public partial class MainWindow : Window
     {
         if (idx < 0 || idx >= _legs.Count) return;
         var l = _legs[idx];
-        var local = l.Hip + (l.Rest - l.Hip) * 0.5 + new Vector(Math.Sin(_phase) * 8 * l.Side, -22);
+        var local = l.Hip + (l.Rest - l.Hip) * 0.5 + new Vector(Math.Sin(_phase) * 8 * l.Side, -22) * _size;
         var target = LW(l, local);
         l.Held = true;
         l.Foot += (target - l.Foot) * Math.Min(1, dt * 14);   // 平滑抬起，不瞬移
@@ -284,24 +346,25 @@ public partial class MainWindow : Window
     void StartEdgeCrawl()
     {
         const double m = 70;
-        double w = Math.Max(_w, 800), h = Math.Max(_h, 600);
-        double dLeft = _pos.X, dRight = w - _pos.X, dTop = _pos.Y, dBottom = h - _pos.Y;
+        double w = _aw, h = _ah;
+        double px = _pos.X - _ax, py = _pos.Y - _ay;   // 在活动范围内的相对位置
+        double dLeft = px, dRight = w - px, dTop = py, dBottom = h - py;
         double min = Math.Min(Math.Min(dLeft, dRight), Math.Min(dTop, dBottom));
         double dir = _rnd.NextDouble() < 0.5 ? -1 : 1, len = 300 + _rnd.NextDouble() * 500;
         _route.Clear();
         if (min == dTop || min == dBottom)
         {
             double y = min == dTop ? m : h - m;
-            double x0 = Math.Clamp(_pos.X, m, w - m);
-            _route.Add(new Vector(x0, y));
-            _route.Add(new Vector(Math.Clamp(x0 + dir * len, m, w - m), y));
+            double x0 = Math.Clamp(px, m, w - m);
+            _route.Add(new Vector(_ax + x0, _ay + y));
+            _route.Add(new Vector(_ax + Math.Clamp(x0 + dir * len, m, w - m), _ay + y));
         }
         else
         {
             double x = min == dLeft ? m : w - m;
-            double y0 = Math.Clamp(_pos.Y, m, h - m);
-            _route.Add(new Vector(x, y0));
-            _route.Add(new Vector(x, Math.Clamp(y0 + dir * len, m, h - m)));
+            double y0 = Math.Clamp(py, m, h - m);
+            _route.Add(new Vector(_ax + x, _ay + y0));
+            _route.Add(new Vector(_ax + x, _ay + Math.Clamp(y0 + dir * len, m, h - m)));
         }
         StopPose();
         _wp = 0; _pause = 0; _walking = true; _crawl = true;
@@ -393,13 +456,13 @@ public partial class MainWindow : Window
             for (int i = 0; i < n; i++)
             {
                 double k = _pet.LegScale?[i] ?? 1;
-                var hip = new Vector(side * _pet.HipX, _pet.HipY[i]);
-                var rest = new Vector(side * _pet.Rest[i].X, _pet.Rest[i].Y);
+                var hip = new Vector(side * _pet.HipX, _pet.HipY[i]) * _size;
+                var rest = new Vector(side * _pet.Rest[i].X, _pet.Rest[i].Y) * _size;
                 _legs.Add(new Leg
                 {
                     Seg = _pet.Legs[s * n + i],
                     Side = side,
-                    K = k,
+                    K = k * _size,   // 腿长、伸展距离随大小档位一起缩放
                     SegIdx = _pet.Segs != null ? i : -1,
                     Hip = hip,
                     Out = Unit(new Vector(side * _pet.Out[i].X, _pet.Out[i].Y)),
@@ -448,25 +511,38 @@ public partial class MainWindow : Window
         const int GWL_EXSTYLE = -20;
         const long WS_EX_TRANSPARENT = 0x20, WS_EX_TOOLWINDOW = 0x80, WS_EX_LAYERED = 0x80000;
         long ex = GetWindowLongPtr(h, GWL_EXSTYLE).ToInt64();
-        SetWindowLongPtr(h, GWL_EXSTYLE, new IntPtr(ex | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW));
+        _hwnd = h;
+        SetWindowLongPtr(h, GWL_EXSTYLE, new IntPtr(ex | WS_EX_TRANSPARENT | WS_EX_LAYERED | WS_EX_TOOLWINDOW | 0x08000000L));   // 0x08000000 = WS_EX_NOACTIVATE，接收点击时也不抢焦点
     }
 
     // 每帧轮询：点宠物 -> 冲刺；点别处 -> 放一只苍蝇；Ctrl+Shift+Q -> 退出
-    void PollInput()
+    void PollInput(double dt)
     {
         bool down = (GetAsyncKeyState(0x01) & 0x8000) != 0;
-        if (down && !_wasDown && !_dash && GetCursorPos(out var c))
+        bool ctrl = (GetAsyncKeyState(0x11) & 0x8000) != 0;
+        bool have = GetCursorPos(out var c), near = false;
+        Vector cur = default;
+        if (have)
+        {
+            var p0 = this.PointToClient(new PixelPoint(c.X, c.Y));
+            cur = new Vector(p0.X, p0.Y);
+            near = Len(cur - _pos) < Math.Max(90, 170 * _size);
+            UpdateDodge(cur, dt);
+        }
+        // 光标在宠物附近（睡着时除外）或按住 Ctrl 时，窗口临时接收点击，点击就不会穿到下面的软件
+        SetCapture(have && ((near && !_sleeping) || ctrl));
+        if (down && !_wasDown && !_dash && have)
         {
             var pt = this.PointToClient(new PixelPoint(c.X, c.Y));
-            if (Len(new Vector(pt.X, pt.Y) - _pos) < 170) StartDash();
+            if (Len(new Vector(pt.X, pt.Y) - _pos) < Math.Max(90, 170 * _size)) StartDash();
             else if ((GetAsyncKeyState(0x11) & 0x8000) != 0) AddFly(new Vector(pt.X, pt.Y));   // 只有按住 Ctrl 再点才出苍蝇
         }
         _wasDown = down;
 
-        bool ctrl = (GetAsyncKeyState(0x11) & 0x8000) != 0;
-        bool shift = (GetAsyncKeyState(0x10) & 0x8000) != 0;
-        bool q = (GetAsyncKeyState(0x51) & 0x8000) != 0;
-        if (ctrl && shift && q) Close();
+        bool pressed = _hotVks.Length > 0;
+        foreach (var vk in _hotVks)
+            if ((GetAsyncKeyState(vk) & 0x8000) == 0) { pressed = false; break; }
+        if (pressed) Close();
     }
 
     // ───────── 苍蝇 ─────────
@@ -601,6 +677,7 @@ public partial class MainWindow : Window
         if (_eatT > 0) return;
         _nod = 0;
         Stage.Children.Remove(f.C); _flies.Remove(f);
+        _hunger = Math.Max(0, _hunger - 0.6);   // 吃饱一点
         _eat = null;
         foreach (var l in _legs) l.Held = false;
         if (_flies.Count == 0) { StartRoute(); _pause = 0.6; }
@@ -641,7 +718,7 @@ public partial class MainWindow : Window
         double diff = Wrap(Math.Atan2(d.X, -d.Y) - _heading);
         double turn = TurnRate * dt;
         _heading += Math.Clamp(diff, -turn, turn);
-        double speed = BaseSpeed * Math.Clamp(1 - Math.Abs(diff) / 1.3, 0.15, 1.0) * Math.Clamp(dist / 500, 0.5, 1.5);
+        double speed = BaseSpeed * Pace * Math.Clamp(1 - Math.Abs(diff) / 1.3, 0.15, 1.0) * Math.Clamp(dist / 500, 0.5, 1.5);
         _pos += Fwd(_heading) * (speed * dt);
         return speed;
     }
@@ -688,9 +765,10 @@ public partial class MainWindow : Window
             int edge = _rnd.Next(4);   // 0 上 1 右 2 下 3 左
             bool horiz = edge is 0 or 2;
             double fix = edge switch { 0 => r.Top, 1 => r.Right, 2 => r.Bottom, _ => r.Left };
-            double lo = Math.Max((horiz ? r.Left : r.Top) + 20, m);
-            double hi = Math.Min((horiz ? r.Right : r.Bottom) - 20, (horiz ? w : hh) - m);
-            if (fix < m || fix > (horiz ? hh : w) - m || hi - lo < 120) continue;   // 边在屏幕外或太短
+            double lo = Math.Max((horiz ? r.Left : r.Top) + 20, (horiz ? _ax : _ay) + m);
+            double hi = Math.Min((horiz ? r.Right : r.Bottom) - 20, (horiz ? _ax + _aw : _ay + _ah) - m);
+            double fLo = (horiz ? _ay : _ax) + m, fHi = (horiz ? _ay + _ah : _ax + _aw) - m;
+            if (fix < fLo || fix > fHi || hi - lo < 120) continue;   // 边在活动范围外或太短
             double len = Math.Min(hi - lo, 250 + _rnd.NextDouble() * 450);
             double s = lo + _rnd.NextDouble() * (hi - lo - len), e = s + len;
             if (_rnd.NextDouble() < 0.5) (s, e) = (e, s);
@@ -715,11 +793,10 @@ public partial class MainWindow : Window
     // 点击宠物：随机朝一个方向快速冲出一小段距离到 B 点，到达后 StartRoute 以正常速度走向 C 点
     void StartDash()
     {
-        double w = Math.Max(_w, 800), h = Math.Max(_h, 600);
         double ang = _rnd.NextDouble() * Math.PI * 2, dist = 200 + _rnd.NextDouble() * 150;
         _dashTarget = new Vector(
-            Math.Clamp(_pos.X + Math.Sin(ang) * dist, 80, w - 80),
-            Math.Clamp(_pos.Y - Math.Cos(ang) * dist, 80, h - 80));
+            Math.Clamp(_pos.X + Math.Sin(ang) * dist, _ax + 80, _ax + _aw - 80),
+            Math.Clamp(_pos.Y - Math.Cos(ang) * dist, _ay + 80, _ay + _ah - 80));
         CancelEat();
         _dash = true; _walking = true; _pause = 0;
         _crawl = false; StopPose();
@@ -728,11 +805,10 @@ public partial class MainWindow : Window
     void StartRoute()
     {
         _route.Clear();
-        double w = Math.Max(_w, 800), h = Math.Max(_h, 600);
-        double m = Math.Min(160, Math.Min(w, h) / 4);
+        double m = Math.Min(160, Math.Min(_aw, _ah) / 4);
         int n = _rnd.Next(2, 5);
         for (int i = 0; i < n; i++)
-            _route.Add(new Vector(m + _rnd.NextDouble() * (w - 2 * m), m + _rnd.NextDouble() * (h - 2 * m)));
+            _route.Add(new Vector(_ax + m + _rnd.NextDouble() * (_aw - 2 * m), _ay + m + _rnd.NextDouble() * (_ah - 2 * m)));
         _wp = 0; _pause = 0; _walking = true;
         _crawl = false; StopPose();
     }
@@ -742,11 +818,12 @@ public partial class MainWindow : Window
     {
         double now = _clock.Elapsed.TotalSeconds, dt = Math.Min(now - _last, 0.05);
         _last = now;
-        if (CheckHidden(now)) return;   // 有全屏应用时整个暂停：不移动、不响应点击
+        if (CheckHidden(now)) { SetInterval(250); return; }   // 有全屏应用时整个暂停：不移动、不响应点击，并降到很低的刷新率
         double speed = 0;
 
         _chase = !_dash && _eat == null && _flies.Count > 0;
         _follow = FollowMouse && !_dash && _eat == null && _flies.Count == 0;
+        if (_sleeping && (_dash || _chase || _follow)) WakeUp();
         if (_chase) { _walking = true; _pause = 0; }
 
         if (_eat != null) UpdateEating(dt);
@@ -773,26 +850,30 @@ public partial class MainWindow : Window
                     double diff = Wrap(Math.Atan2(d.X, -d.Y) - _heading);
                     double turn = (_dash ? DashTurn : fly != null ? ChaseTurn : TurnRate) * dt;
                     _heading += Math.Clamp(diff, -turn, turn);
-                    speed = (_dash ? DashSpeed : fly != null ? ChaseSpeed : _crawl && _wp >= 1 ? CrawlSpeed : BaseSpeed)
+                    speed = (_dash ? DashSpeed : fly != null ? ChaseSpeed : _crawl && _wp >= 1 ? CrawlSpeed : BaseSpeed * Pace)
                             * Math.Clamp(1 - Math.Abs(diff) / 1.3, (_dash || fly != null) ? 0.5 : 0.15, 1.0);
                     _pos += new Vector(Math.Sin(_heading), -Math.Cos(_heading)) * (speed * dt);
                 }
             }
         }
 
-        PollInput();
+        PollInput(dt);
         UpdateIdle(dt);
+        UpdatePrints(dt);
         UpdateChain();
         UpdateLegs(dt, speed);
         Canvas.SetLeft(_pet.Body, _pos.X);
         Canvas.SetTop(_pet.Body, _pos.Y);
         _pet.Rot.Angle = (_heading + _nod) * 180 / Math.PI;   // 吃东西时头部点动
+
+        bool active = speed > 1 || _eat != null || _dash || _chase || _waveT > 0 || _look || _twitchT > 0;
+        SetInterval(active ? 16 : 33);
     }
 
     void UpdateLegs(double dt, double speed)
     {
         bool moving = speed > 1;
-        double thresh = (moving ? 18 : 6) * _pet.StepScale;
+        double thresh = (moving ? 18 : 6) * _pet.StepScale * _size;
         double stepT = (_dash || _chase) ? DashStepTime : StepTime;
         var fwd = new Vector(Math.Sin(_heading), -Math.Cos(_heading));
         var busy = new bool[2];
@@ -805,7 +886,7 @@ public partial class MainWindow : Window
             if (l.Stepping)
             {
                 l.T += dt / stepT;
-                if (l.T >= 1) { l.T = 1; l.Stepping = false; }
+                if (l.T >= 1) { l.T = 1; l.Stepping = false; if (moving) AddPrint(l.To); }   // 落脚时留一个脚印
                 double e = l.T * l.T * (3 - 2 * l.T);
                 l.Foot = l.From + (l.To - l.From) * e;
             }
@@ -880,7 +961,7 @@ public partial class MainWindow : Window
         int n = segs.Length;
         if (_segPos.Length != n) { _segPos = new Vector[n]; _segHead = new double[n]; }
         _chain = new Vector[n + 1];
-        for (int i = 0; i <= n; i++) _chain[i] = _pos + Fwd(_heading) * (-_pet.SegGap * i);
+        for (int i = 0; i <= n; i++) _chain[i] = _pos + Fwd(_heading) * (-_pet.SegGap * _size * i);
         UpdateChain();
     }
 
@@ -889,7 +970,7 @@ public partial class MainWindow : Window
     {
         var segs = _pet.Segs;
         if (segs == null || _chain.Length != segs.Length + 1) return;
-        double gap = _pet.SegGap;
+        double gap = _pet.SegGap * _size;
         _chain[0] = _pos;
         for (int i = 1; i < _chain.Length; i++)
             _chain[i] = _chain[i - 1] + Unit(_chain[i] - _chain[i - 1]) * gap;
@@ -902,10 +983,167 @@ public partial class MainWindow : Window
             _segHead[k] = ang;
             Canvas.SetLeft(segs[k], p.X);
             Canvas.SetTop(segs[k], p.Y);
-            ((RotateTransform)segs[k].RenderTransform!).Angle = ang * 180 / Math.PI;
+            _pet.SegRot![k].Angle = ang * 180 / Math.PI;
         }
     }
+    // ───────── 睡觉 / 饥饿 / 躲鼠标 / 脚印 / 点击捕获 ─────────
+    double Pace => (_night ? 0.75 : 1.0) * (1 - 0.3 * _hunger);   // 夜里慢一些，饿了也慢一些
+
+    void StartSleep()
+    {
+        _sleeping = true;
+        _sleepT = (_night ? 25 : 12) + _rnd.NextDouble() * 15;
+        _look = false; _waveT = 0; _twitchT = 0;
+        foreach (var l in _legs) l.Held = false;
+    }
+
+    void WakeUp()
+    {
+        _sleeping = false;
+        _idleWait = IdleMin;
+        ApplySize();   // 去掉呼吸造成的缩放偏差
+        if (_zzz != null) _zzz.IsVisible = false;
+    }
+
+    void UpdateZzz()
+    {
+        if (_zzz == null) return;
+        _zzz.IsVisible = true;
+        _zzz.Opacity = 0.55 + 0.45 * Math.Sin(_clock.Elapsed.TotalSeconds * 2.2);
+        Canvas.SetLeft(_zzz, _pos.X + 26 * _size);
+        Canvas.SetTop(_zzz, _pos.Y - 56 * _size);
+    }
+
+    // 光标很快地冲到宠物身边时，宠物朝反方向快速躲开；躲完有 4 秒冷却
+    void UpdateDodge(Vector cur, double dt)
+    {
+        double now = _clock.Elapsed.TotalSeconds, vel = 0;
+        if (_curPrevT >= 0 && now > _curPrevT) vel = Len(cur - _curPrev) / (now - _curPrevT);
+        _curPrev = cur; _curPrevT = now;
+        if (_dodgeCd > 0) { _dodgeCd -= dt; return; }
+        if (_dash || _follow || _eat != null || _flies.Count > 0) return;
+        if ((GetAsyncKeyState(0x11) & 0x8000) != 0) return;   // 按着 Ctrl 是要喂食，不躲
+        var away = _pos - cur;
+        if (Len(away) < 130 * _size && vel > 900) StartFlee(away);
+    }
+
+    void StartFlee(Vector away)
+    {
+        var u = Unit(away);
+        double dist = 260 + _rnd.NextDouble() * 120;
+        _dashTarget = new Vector(
+            Math.Clamp(_pos.X + u.X * dist, _ax + 80, _ax + _aw - 80),
+            Math.Clamp(_pos.Y + u.Y * dist, _ay + 80, _ay + _ah - 80));
+        _dodgeCd = 4;
+        CancelEat();
+        _dash = true; _walking = true; _pause = 0;
+        _crawl = false; StopPose();
+    }
+
+    // 窗口是否接收点击：关掉 WS_EX_TRANSPARENT 就会接收，点击不再穿透
+    void SetCapture(bool on)
+    {
+        if (_hwnd == IntPtr.Zero || on == _capturing) return;
+        _capturing = on;
+        long ex = GetWindowLongPtr(_hwnd, -20).ToInt64();
+        ex = on ? ex & ~0x20L : ex | 0x20L;
+        SetWindowLongPtr(_hwnd, -20, new IntPtr(ex));
+    }
+
+    // 脚印：落脚处放一个淡色小圆点，2.5 秒内淡出，最多同时 80 个
+    void AddPrint(Vector p)
+    {
+        if (_sleeping) return;
+        double d = Math.Max(2, 3.5 * _pet.Scale * _size);
+        var e = new Avalonia.Controls.Shapes.Ellipse { Width = d, Height = d, Fill = PrintBrush, IsHitTestVisible = false };
+        Canvas.SetLeft(e, p.X - d / 2); Canvas.SetTop(e, p.Y - d / 2);
+        Stage.Children.Insert(0, e);   // 放在最底层，宠物盖在脚印上面
+        _prints.Add(new Print { E = e, Life = 2.5 });
+        if (_prints.Count > 80) { Stage.Children.Remove(_prints[0].E); _prints.RemoveAt(0); }
+    }
+
+    void UpdatePrints(double dt)
+    {
+        for (int i = _prints.Count - 1; i >= 0; i--)
+        {
+            var p = _prints[i];
+            p.Life -= dt;
+            if (p.Life <= 0) { Stage.Children.Remove(p.E); _prints.RemoveAt(i); }
+            else p.E.Opacity = Math.Min(1, p.Life / 1.2);
+        }
+    }
+
     static double Len(Vector v) => Math.Sqrt(v.X * v.X + v.Y * v.Y);
     static Vector Unit(Vector v) { double n = Len(v); return n < 1e-9 ? new Vector(0, -1) : new Vector(v.X / n, v.Y / n); }
     static double Wrap(double a) { while (a > Math.PI) a -= 2 * Math.PI; while (a < -Math.PI) a += 2 * Math.PI; return a; }
+
+    // ───────── 大小 / 速度 / 活动范围 / 退出快捷键 / 刷新率 ─────────
+    public void SetSize(string s)
+    {
+        _size = s switch { "small" => 0.75, "large" => 1.4, _ => 1.0 };
+        ApplySize();
+        BuildLegs();   // 腿长、腿根、落点都按新大小重算，脚重新落地
+    }
+
+    void ApplySize()
+    {
+        foreach (var p in _pets.Values) p.BodySc.ScaleX = p.BodySc.ScaleY = p.Scale * _size;
+        if (_centipede.SegSc != null)
+            foreach (var sc in _centipede.SegSc) sc.ScaleX = sc.ScaleY = _size;
+    }
+
+    public void SetSpeed(string s)
+    {
+        BaseSpeed = 420 * (s switch { "slow" => 0.6, "fast" => 1.7, _ => 1.0 });
+    }
+
+    public void SetMonitor(int n)
+    {
+        _monitor = n;
+        if (!_opened) return;   // 窗口还没打开，打开时会统一计算
+        ApplyArea();
+        if (_eat == null && _flies.Count == 0 && !FollowMouse) StartRoute();   // 重新规划路线，走进新的活动范围
+    }
+
+    // 按选择的显示器算出活动范围；序号超出显示器数量时退回所有显示器
+    void ApplyArea()
+    {
+        _ax = 0; _ay = 0; _aw = _w; _ah = _h;
+        if (_monitor <= 0) return;
+        var all = Screens.All.OrderBy(s => s.Bounds.X).ToList();
+        if (_monitor > all.Count) return;
+        var b = all[_monitor - 1].Bounds;
+        _ax = (b.X - _ox) / _sc; _ay = (b.Y - _oy) / _sc;
+        _aw = b.Width / _sc; _ah = b.Height / _sc;
+    }
+
+    // 解析形如 Ctrl+Shift+Q / Ctrl+Alt+F12 的快捷键；必须至少一个修饰键加一个普通键，否则回退 Ctrl+Shift+Q
+    public void SetHotkey(string? s)
+    {
+        var vks = new List<int>();
+        bool ok = !string.IsNullOrWhiteSpace(s);
+        if (ok)
+        {
+            foreach (var raw in s!.Split('+', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries))
+            {
+                string t = raw.ToUpperInvariant();
+                int vk = t switch { "CTRL" or "CONTROL" => 0x11, "SHIFT" => 0x10, "ALT" => 0x12, _ => 0 };
+                if (vk == 0 && t.Length == 1 && t[0] is >= 'A' and <= 'Z') vk = t[0];
+                else if (vk == 0 && t.Length is 2 or 3 && t[0] == 'F' && int.TryParse(t[1..], out int fn) && fn is >= 1 and <= 12) vk = 0x70 + fn - 1;
+                if (vk == 0) { ok = false; break; }
+                vks.Add(vk);
+            }
+        }
+        bool hasMod = vks.Exists(v => v is 0x11 or 0x10 or 0x12);
+        bool hasKey = vks.Exists(v => v is not (0x11 or 0x10 or 0x12));
+        _hotVks = ok && hasMod && hasKey ? vks.ToArray() : new[] { 0x11, 0x10, 0x51 };
+    }
+
+    // 刷新率：活动时 16ms，静止 33ms，全屏隐藏 250ms；只在变化时才改定时器
+    void SetInterval(int ms)
+    {
+        if (_timer == null || ms == _intervalMs) return;
+        _intervalMs = ms;
+        _timer.Interval = TimeSpan.FromMilliseconds(ms);
+    }
 }

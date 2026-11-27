@@ -2,7 +2,6 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              x:Class="Spider.App"
              RequestedThemeVariant="Default">
-             <!-- "Default" ThemeVariant follows system theme variant. "Dark" or "Light" are other available options. -->
 
     <Application.Styles>
         <FluentTheme />
@@ -18,6 +17,37 @@
                         <NativeMenuItem Header="甲虫" ToggleType="Radio" Click="OnPickBeetle" />
                         <NativeMenuItem Header="蚂蚁" ToggleType="Radio" Click="OnPickAnt" />
                         <NativeMenuItem Header="蜈蚣" ToggleType="Radio" Click="OnPickCentipede" />
+                        <NativeMenuItemSeparator />
+                        <NativeMenuItem Header="宠物大小">
+                            <NativeMenu>
+                                <NativeMenuItem Header="小" ToggleType="Radio" Click="OnPickSize" />
+                                <NativeMenuItem Header="中" ToggleType="Radio" Click="OnPickSize" />
+                                <NativeMenuItem Header="大" ToggleType="Radio" Click="OnPickSize" />
+                            </NativeMenu>
+                        </NativeMenuItem>
+                        <NativeMenuItem Header="移动速度">
+                            <NativeMenu>
+                                <NativeMenuItem Header="慢速" ToggleType="Radio" Click="OnPickSpeed" />
+                                <NativeMenuItem Header="正常" ToggleType="Radio" Click="OnPickSpeed" />
+                                <NativeMenuItem Header="快速" ToggleType="Radio" Click="OnPickSpeed" />
+                            </NativeMenu>
+                        </NativeMenuItem>
+                        <NativeMenuItem Header="活动范围">
+                            <NativeMenu>
+                                <NativeMenuItem Header="所有显示器" ToggleType="Radio" Click="OnPickMonitor" />
+                                <NativeMenuItem Header="显示器 1" ToggleType="Radio" Click="OnPickMonitor" />
+                                <NativeMenuItem Header="显示器 2" ToggleType="Radio" Click="OnPickMonitor" />
+                                <NativeMenuItem Header="显示器 3" ToggleType="Radio" Click="OnPickMonitor" />
+                            </NativeMenu>
+                        </NativeMenuItem>
+                        <NativeMenuItem Header="退出快捷键">
+                            <NativeMenu>
+                                <NativeMenuItem Header="Ctrl+Shift+Q" ToggleType="Radio" Click="OnPickHotkey" />
+                                <NativeMenuItem Header="Ctrl+Shift+X" ToggleType="Radio" Click="OnPickHotkey" />
+                                <NativeMenuItem Header="Ctrl+Alt+Q" ToggleType="Radio" Click="OnPickHotkey" />
+                                <NativeMenuItem Header="Ctrl+Shift+F12" ToggleType="Radio" Click="OnPickHotkey" />
+                            </NativeMenu>
+                        </NativeMenuItem>
                         <NativeMenuItemSeparator />
                         <NativeMenuItem Header="启用喂食" ToggleType="CheckBox" Click="OnToggleFeeding" />
                         <NativeMenuItem Header="全屏时自动隐藏" ToggleType="CheckBox" Click="OnToggleAutoHide" />

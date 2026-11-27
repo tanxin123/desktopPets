@@ -4,10 +4,14 @@ using System.Text.Json;
 
 namespace Spider;
 
-// 用户配置：上次选的宠物、是否启用喂食。存放在 %AppData%\DesktopPet\settings.json
+// 用户配置，存放在 %AppData%\DesktopPet\settings.json
 public sealed class AppSettings
 {
-    public string Pet { get; set; } = "spider";      // "spider" 或 "roach"
+    public string Pet { get; set; } = "spider";            // spider / roach / beetle / ant / centipede
+    public string Size { get; set; } = "medium";           // small / medium / large
+    public string Speed { get; set; } = "normal";          // slow / normal / fast
+    public int Monitor { get; set; } = 0;                  // 0 = 所有显示器；n = 第 n 块显示器（按从左到右排序）
+    public string ExitHotkey { get; set; } = "Ctrl+Shift+Q";   // 退出快捷键，例如 Ctrl+Alt+Q、Ctrl+Shift+F12
     public bool FeedingEnabled { get; set; } = true;
     public bool AutoStart { get; set; } = false;           // 开机自启（计划任务）
     public bool FollowMouse { get; set; } = false;         // 跟随鼠标
@@ -26,7 +30,12 @@ public sealed class AppSettings
                 var s = JsonSerializer.Deserialize<AppSettings>(File.ReadAllText(FilePath));
                 if (s != null)
                 {
-                    if (s.Pet is not ("spider" or "roach" or "beetle" or "ant" or "centipede")) s.Pet = "spider";   // 非法值回退默认
+                    // 非法值一律回退默认
+                    if (s.Pet is not ("spider" or "roach" or "beetle" or "ant" or "centipede")) s.Pet = "spider";
+                    if (s.Size is not ("small" or "medium" or "large")) s.Size = "medium";
+                    if (s.Speed is not ("slow" or "normal" or "fast")) s.Speed = "normal";
+                    if (s.Monitor < 0) s.Monitor = 0;
+                    if (string.IsNullOrWhiteSpace(s.ExitHotkey)) s.ExitHotkey = "Ctrl+Shift+Q";
                     return s;
                 }
             }
