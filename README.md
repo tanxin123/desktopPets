@@ -109,6 +109,30 @@ dotnet publish -c Release -r win-x64 --self-contained false ^
 
 输出是 `publish\DesktopPet.exe`。不建议加 `PublishTrimmed`，Avalonia 的 XAML 加载依赖反射，裁剪后容易启动失败。
 
+## 自动发布（GitHub Actions）
+
+`.github/workflows/release.yml` 会在推送以 `v` 开头的标签时，用 `windows-latest` 编译单文件的 `DesktopPet.exe`，并自动创建 GitHub Release（带自动生成的更新说明）。
+
+发布一个新版本：
+
+1. 把 `Spider.csproj` 里的 `<Version>` 改成要发布的版本，例如 `1.2.0`。
+2. 提交并推送到 `main`。
+3. 打标签并推送：
+
+   ```bash
+   git tag v1.2.0
+   git push origin v1.2.0
+   ```
+
+4. 到仓库的 Actions 页面查看运行结果，成功后 Releases 页面会出现 `DesktopPet.exe`。
+
+注意：
+
+- 标签不能重复使用，已有的标签（例如 `v1.0.1`、`v1.1.0`）不能再用。
+- 标签去掉 `v` 后必须是 `1.2.0` 这样的数字版本号，程序的“检查更新”才能解析。`Spider.csproj` 的 `<Version>` 要和标签保持一致，否则程序会一直提示有新版本。
+- 如果 Release 创建失败，到仓库 Settings → Actions → General → Workflow permissions，确认允许读写权限。
+- 发布出来的 exe 不带运行时，用户需要安装 .NET 8 运行时。
+
 ## 项目结构
 
 ```
@@ -131,6 +155,8 @@ Spider/
 │   ├── LadybugView.axaml   瓢虫的外形与样式
 │   └── CustomView.axaml    自定义宠物（读取 custom.png 做身体）
 ├── Assets/*.png            各宠物的托盘图标
+├── .github/workflows/
+│   └── release.yml         推送 v* 标签时自动编译并创建 Release
 └── app.manifest            管理员权限清单
 ```
 
